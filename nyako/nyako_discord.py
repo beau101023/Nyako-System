@@ -50,36 +50,48 @@ async def collect_messages():
     global conversationChannel
     global emptyMessageCount
 
-    print("Message collection reached")
-
     while True:
         if(conversationChannel != None):
-            if(emptyMessageCount == 12):
-                resp = ConversationSession.query("[no input (1:00)]")
-                await conversationChannel.send(resp)
-                
-            if(len(messages) == 0):
-                emptyMessageCount += 1
-                # wait 5 seconds for more messages to come in
-                await asyncio.sleep(5)
-            else:
-                emptyMessageCount = 0
+            try:
+                if(emptyMessageCount == 12):
+                    resp = ConversationSession.query("[no input (1:00)]")
 
-                await asyncio.sleep(5)
-                # get whatever messages are in the buffer
-                messagesToProcess = messages
+                    if(resp != "" and resp != "[listening]"):
+                        await conversationChannel.send(resp)
+                    
+                if(len(messages) == 0):
+                    emptyMessageCount += 1
+                    # wait 5 seconds for more messages to come in
+                    await asyncio.sleep(5)
+                else:
+                    emptyMessageCount = 0
 
-                # get the content of each message and format as [discord username]: [message content]
-                messagesToProcess = ["[discord] " + message.author.display_name + ": " + message.content for message in messagesToProcess]
+                    await asyncio.sleep(5)
+                    # get whatever messages are in the buffer
+                    messagesToProcess = messages
 
-                # join the messages into a string separated by newlines
-                messagesToProcess = "\n".join(messagesToProcess)
+                    # get the content of each message and format as [discord username]: [message content]
+                    messagesToProcess = ["[discord] " + message.author.display_name + ": " + message.content for message in messagesToProcess]
 
-                resp = ConversationSession.query(messagesToProcess)
-                await conversationChannel.send(resp)
+                    # join the messages into a string separated by newlines
+                    messagesToProcess = "\n".join(messagesToProcess)
 
-                # clear the buffer
-                messages = []
+                    resp = ConversationSession.query(messagesToProcess)
+
+                    if(resp != ""):
+                        await conversationChannel.send(resp)
+
+                    # clear the buffer
+                    messages = []
+            except Exception as e:
+                try:
+                    await conversationChannel.send("Error: " + str(e))
+                    exit()
+                except Exception as e:
+                    print(e)
+                    exit(1)
+        else:
+            await asyncio.sleep(5)
 
 print("Starting bot...")
 bot.run(DISCORD_BOT_TOKEN)
