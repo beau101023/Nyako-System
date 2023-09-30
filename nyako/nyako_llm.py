@@ -28,6 +28,9 @@ def format_message_as_dict(role, message):
 
     return {"role": role, "content": message}
 
+def message_dict_to_string(message):
+        return message["role"] + ": " + message["content"]
+
 
 # an object that stores a history of messages and a system prompt
 
@@ -52,13 +55,14 @@ class ConversationSession:
 
         response = get_response(self.getContext())
 
+        # if response starts with the data tag "[listening]" then remove everything after the tag
+        if(response.startswith("[listening]")):
+            response = "[listening]"
+
         self.messages.append(format_message_as_dict("assistant", response))
 
-
         # if the message context goes over [messages_count_before_summarization] messages, memorize the oldest messages
-
         if(len(self.messages) > messages_count_before_summarization):
-
             self.LLMMemorize()
 
         return response
@@ -82,7 +86,6 @@ class ConversationSession:
     def printFormattedMessageLog(self):
 
             for message in self.messages:
-    
                 print(message["role"] + ": " + message["content"])
 
 
@@ -99,12 +102,17 @@ class ConversationSession:
         # remove the oldest messages from the conversation
         self.messages = self.messages[num_messages_to_summarize:]
 
-        # use GPT-4 for summarization due to higher accuracy. Input is the oldest messages, the previous memory, and the summarization prompt
+        # Input is the oldest messages, the previous memory, and the summarization prompt
+
+        messages_string = "\n".join([message_dict_to_string(message) for message in oldest_messages])
 
         if(self.memory == ""):
-            memory_management_input = [self.summarizeP] + oldest_messages
+            memory_management_input = [{"role": "user", "content": messages_string}]
         else:
-            memory_management_input = [self.summarizeP] + [self.memory] + oldest_messages
+            memory_management_input = [{"role": "user", "content": message_dict_to_string(self.memory) + "\n" + messages_string}]
+        
+        memory_management_input = [self.summarizeP] + memory_management_input
+
         print("memory_management_input: ")
         print(memory_management_input)
 
@@ -113,7 +121,6 @@ class ConversationSession:
         print(memory_response)
 
         # tag the summary so the llm will interpret it as memory
-
-        self.memory = format_message_as_dict("assistant", "[short-term memory]: " + memory_response)
+        self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
         print("formatted memory: ")
         print(self.memory)
