@@ -1,5 +1,6 @@
 import openai
 
+from datetime import datetime
 
 from nyako_params import API_KEY
 from nyako_params import summarize_prompt
@@ -7,6 +8,11 @@ from nyako_params import messages_count_before_summarization
 from nyako_params import num_messages_to_summarize
 from nyako_params import chat_model
 from nyako_params import summarization_model
+
+from vectordb.nyako_ltm import insertToMemory
+from vectordb.nyako_ltm import retrieveMemoriesWithContext
+from nyako_params import ltm_context_size
+from nyako_params import ltm_retrieval_count
 
 openai.api_key = API_KEY
 
@@ -49,7 +55,8 @@ class ConversationSession:
 
     def query(self, message):
 
-        self.messages.append(format_message_as_dict("user", message))
+        timeString = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
+        self.messages.append(format_message_as_dict("user", timeString + message))
 
         print(self.getContext())
 
@@ -68,7 +75,6 @@ class ConversationSession:
         return response
 
     def mostRecentMessage(self):
-
         return self.messages[-1]
 
 
@@ -76,21 +82,30 @@ class ConversationSession:
     def getContext(self):
 
         if(self.memory == ""):
+            return [self.systemP] + [self.getLongTermMemory()] + self.messages
+        else:
+            return [self.systemP] + [self.getLongTermMemory()] + [self.memory] + self.messages
 
-            return [self.systemP] + self.messages
+    def getLongTermMemory(self):
+        memoryChunks = retrieveMemoriesWithContext(self.mostRecentMessage()["content"], ltm_retrieval_count, ltm_context_size)
+        # TODO: this is not proper support for the nested memory structure. ideally memory chunks would be separated by some obvious delimiter
+        
+        aggregateText = "[long-term memory]\n"
+        count = 0
+        for chunk in memoryChunks:
+            astext = "\n".join([message.text for message in chunk])
+            aggregateText += "MEMORY " + str(count) + ": " + astext + "\n"
+            count += 1
 
-        return [self.systemP] + [self.memory] + self.messages
-
+        return format_message_as_dict("user", aggregateText)
 
     # prints the conversation history
     def printFormattedMessageLog(self):
-
             for message in self.messages:
                 print(message["role"] + ": " + message["content"])
 
 
     # queries the llm to summarize the conversation up to this point, then discards the conversation in favor of the summary
-
     def LLMMemorize(self):
 
         # get the oldest [messages_to_summarize] messages
@@ -106,10 +121,7 @@ class ConversationSession:
 
         messages_string = "\n".join([message_dict_to_string(message) for message in oldest_messages])
 
-        if(self.memory == ""):
-            memory_management_input = [{"role": "user", "content": messages_string}]
-        else:
-            memory_management_input = [{"role": "user", "content": message_dict_to_string(self.memory) + "\n" + messages_string}]
+        memory_management_input = [{"role": "user", "content": messages_string}]
         
         memory_management_input = [self.summarizeP] + memory_management_input
 
@@ -119,6 +131,9 @@ class ConversationSession:
         memory_response = get_response(memory_management_input, summarization_model)
         print("memory response: ")
         print(memory_response)
+
+        # insert the summary into the long term memory
+        insertToMemory(memory_response)
 
         # tag the summary so the llm will interpret it as memory
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
