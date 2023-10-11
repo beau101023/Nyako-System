@@ -88,12 +88,11 @@ class ConversationSession:
 
     def getLongTermMemory(self):
         memoryChunks = retrieveMemoriesWithContext(self.mostRecentMessage()["content"], ltm_retrieval_count, ltm_context_size)
-        # TODO: this is not proper support for the nested memory structure. ideally memory chunks would be separated by some obvious delimiter
         
         aggregateText = "[long-term memory]\n"
         count = 0
         for chunk in memoryChunks:
-            astext = "\n".join([message.text for message in chunk])
+            astext = "\n".join([message.origin_messages for message in chunk])
             aggregateText += "MEMORY " + str(count) + ": " + astext + "\n"
             count += 1
 
@@ -118,22 +117,23 @@ class ConversationSession:
         self.messages = self.messages[num_messages_to_summarize:]
 
         # Input is the oldest messages, the previous memory, and the summarization prompt
-
-        messages_string = "\n".join([message_dict_to_string(message) for message in oldest_messages])
-
+        messages_string = "\n".join([message["content"] for message in oldest_messages])
         memory_management_input = [{"role": "user", "content": messages_string}]
-        
-        memory_management_input = [self.summarizeP] + memory_management_input
+        if(self.memory != ""):
+            memory_management_input = [self.summarizeP] + [self.memory] + memory_management_input
+        else:
+            memory_management_input = [self.summarizeP] + memory_management_input
 
         print("memory_management_input: ")
         print(memory_management_input)
 
         memory_response = get_response(memory_management_input, summarization_model)
+
         print("memory response: ")
         print(memory_response)
 
-        # insert the summary into the long term memory
-        insertToMemory(memory_response)
+        # insert the summary and the original messages into the long term memory
+        insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in oldest_messages]))
 
         # tag the summary so the llm will interpret it as memory
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
