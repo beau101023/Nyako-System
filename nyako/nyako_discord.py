@@ -70,6 +70,9 @@ async def collect_messages():
                     # get whatever messages are in the buffer
                     messagesToProcess = messages
 
+                    # clear the buffer
+                    messages = []
+
                     # get the content of each message and format as [discord username]: [message content]
                     messagesToProcess = ["[discord] " + message.author.display_name + ": " + message.content for message in messagesToProcess]
 
@@ -80,9 +83,6 @@ async def collect_messages():
 
                     if(resp != ""):
                         await conversationChannel.send(resp)
-
-                    # clear the buffer
-                    messages = []
             except Exception as e:
                 try:
                     await conversationChannel.send("Error: " + str(e))
