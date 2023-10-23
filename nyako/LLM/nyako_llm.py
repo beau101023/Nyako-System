@@ -4,6 +4,7 @@ from datetime import datetime
 
 from nyako_params import API_KEY
 from nyako_params import summarize_prompt
+from nyako_params import nyako_prompt
 from nyako_params import messages_count_before_summarization
 from nyako_params import num_messages_to_summarize
 from nyako_params import chat_model
@@ -42,7 +43,7 @@ def message_dict_to_string(message):
 
 class ConversationSession:
 
-    def __init__(self, systemP, summarizeP=summarize_prompt):
+    def __init__(self, systemP=nyako_prompt, summarizeP=summarize_prompt):
 
         self.systemP = format_message_as_dict("system", systemP)
 
