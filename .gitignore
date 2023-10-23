@@ -7,3 +7,4 @@ nyako/inputs/__pycache__
 nyako/LLM/__pycache__
 nyako/outputs/__pycache__
 nyako/processors/__pycache__
+OpenAI_Finetuning/nyako_data_repack.jsonl
