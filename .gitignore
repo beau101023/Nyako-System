@@ -2,3 +2,8 @@
 /nyako/vectordb/__pycache__
 /vectordb/workspace_path
 /nyako/__pycache__
+nyako/core/__pycache__
+nyako/inputs/__pycache__
+nyako/LLM/__pycache__
+nyako/outputs/__pycache__
+nyako/processors/__pycache__
