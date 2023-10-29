@@ -1,5 +1,5 @@
 import asyncio
-from core.producer import Producer
+from module_system.core.producer import Producer
 from aioconsole import ainput
 
 class ConsoleInput(Producer):
@@ -11,6 +11,6 @@ class ConsoleInput(Producer):
             message = await ainput(">>> ")
             await self.send(message)
 
-    async def start(self):
+    async def getTask(self):
         task = asyncio.create_task(self.run())
         return task

@@ -1,6 +1,6 @@
 from LLM.nyako_llm import ConversationSession
-from core.listener import Listener
-from core.producer import Producer
+from module_system.core.listener import Listener
+from module_system.core.producer import Producer
 
 class ConversationSessionProcessor(Producer, Listener):
     def __init__(self):

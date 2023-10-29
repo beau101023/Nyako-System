@@ -2,18 +2,19 @@ import openai
 
 from datetime import datetime
 
-from nyako_params import API_KEY
-from nyako_params import summarize_prompt
-from nyako_params import nyako_prompt
-from nyako_params import messages_count_before_summarization
-from nyako_params import num_messages_to_summarize
-from nyako_params import chat_model
-from nyako_params import summarization_model
+from params import API_KEY
+from params import summarize_prompt
+from params import nyako_prompt
+from params import messages_count_before_summarization
+from params import num_messages_to_summarize
+from params import chat_model
+from params import summarization_model
+from params import memorize_enabled
 
 from vectordb.nyako_ltm import insertToMemory
 from vectordb.nyako_ltm import retrieveMemoriesWithContext
-from nyako_params import ltm_context_size
-from nyako_params import ltm_retrieval_count
+from params import ltm_context_size
+from params import ltm_retrieval_count
 
 openai.api_key = API_KEY
 
@@ -116,6 +117,9 @@ class ConversationSession:
 
         # remove the oldest messages from the conversation
         self.messages = self.messages[num_messages_to_summarize:]
+
+        if(not memorize_enabled):
+            return
 
         # Input is the oldest messages, the previous memory, and the summarization prompt
         messages_string = "\n".join([message["content"] for message in oldest_messages])

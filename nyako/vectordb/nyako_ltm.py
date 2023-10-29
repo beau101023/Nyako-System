@@ -2,8 +2,8 @@ from docarray.index import HnswDocumentIndex
 from docarray import DocList
 from vectordb.data_schema import MemoryMessage
 from openai import Embedding
-from nyako_params import API_KEY
-from nyako_params import similarity_threshold
+from params import API_KEY
+from params import similarity_threshold
 
 # workspace path
 similarityIndex = HnswDocumentIndex[MemoryMessage](work_dir='./vectordb/workspace_path')
