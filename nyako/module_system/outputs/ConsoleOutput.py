@@ -7,4 +7,4 @@ class ConsoleOutput(Listener):
         super().__init__()
 
     async def receive(self, message: str):
-        print("\n" + message + "\n" + ">>> ", end="")
+        print("\n" + message)

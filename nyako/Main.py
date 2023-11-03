@@ -1,48 +1,22 @@
 import asyncio
+from PIL import Image
 
 from module_system.inputs.ConsoleInput import ConsoleInput
 from module_system.outputs.ConsoleOutput import ConsoleOutput
-from module_system.outputs.EmoteOutput import EmoteOutput
+from module_system.outputs.VisualOutput import VisualOutput
 from module_system.processors.ConversationSessionProcessor import ConversationSessionProcessor
 from module_system.processors.RealtimeMessageChunker import RealtimeMessageChunker
+from module_system.inputs.SpeechToTextInput import SpeechToTextInput
+from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
 
 import tkinter as tk
 
 async def main():
-    # created in pipeline order
     console_input = ConsoleInput()
     realtime_message_chunker = RealtimeMessageChunker()
     conversation_session_processor = ConversationSessionProcessor()
     console_output = ConsoleOutput()
-
-    await console_input.link_to(realtime_message_chunker)
-    await realtime_message_chunker.link_to(conversation_session_processor)
-    await conversation_session_processor.link_to(console_output)
-
-    inputTask = await console_input.getTask()
-    chunkTask = await realtime_message_chunker.getTask()
-
-    await asyncio.gather(inputTask, chunkTask)
-
-#asyncio.run(main())
-
-async def test():
-    console_input = ConsoleInput()
-    realtime_message_chunker = RealtimeMessageChunker()
-    conversation_session_processor = ConversationSessionProcessor()
-    console_output = ConsoleOutput()
-
-    window = tk.Tk()
-    window.title("nyako")
-    window.geometry("1000x1000")
-    panel = tk.Label(window)
-    img_path = "nyako/images/neutral.png"
-    img = tk.PhotoImage(file=img_path)
-    panel.configure(image=img)
-    panel.image = img
-    panel.pack(side="bottom", fill="both", expand="yes")
-
-    emote_output = EmoteOutput(panel)
+    emote_output = VisualOutput()
 
     await console_input.link_to(realtime_message_chunker.priority_recieve)
     await realtime_message_chunker.link_to(conversation_session_processor.receive)
@@ -51,13 +25,41 @@ async def test():
 
     inputTask = await console_input.getTask()
     chunkTask = await realtime_message_chunker.getTask()
+    emoteTask = await emote_output.getTask()
 
-    tkMainTask = asyncio.create_task(updateWindow(window))
-    await asyncio.gather(inputTask, chunkTask, tkMainTask)
+    await asyncio.gather(inputTask, chunkTask, emoteTask)
 
-async def updateWindow(window):
-    while True:
-        window.update()
-        await asyncio.sleep(0.1)
+#asyncio.run(main())
+
+async def test():
+    # create modules
+    speech_to_text = SpeechToTextInput()
+    message_chunker = RealtimeMessageChunker()
+    conversation_session_processor = ConversationSessionProcessor()
+    speech_output = TextToSpeechOutput()
+    visual_output = VisualOutput()
+
+    print("warming up...")
+    # warm up tts
+    speech_output.warmup()
+
+    print("getting tasks...")
+    stt_task = await speech_to_text.getTask()
+    chunker_task = await message_chunker.getTask()
+    emote_task = await visual_output.getTask()
+
+    print("linking...")
+    # link modules
+    await speech_to_text.link_to(message_chunker.receive)
+    await message_chunker.link_to(conversation_session_processor.receive)
+    await conversation_session_processor.link_to(speech_output.receive)
+    await conversation_session_processor.link_to(visual_output.receive)
+
+    print("listening...")
+
+    # await tasks
+    await asyncio.gather(stt_task, chunker_task, emote_task)
+
+    speech_to_text.stop()
 
 asyncio.run(test())

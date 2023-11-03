@@ -1,11 +1,9 @@
 import torch
 from audio_playback import playTTSAudio
 
-from nyako_params import sample_rate_out, language, model_id, speaker
+from params import sample_rate_out, language, model_id, speaker, device
 
 model, _ = torch.hub.load('snakers4/silero-models', 'silero_tts', language=language, speaker=model_id)
-
-from nyako_params import device
 model.to(device)
 
 # text to raw audio

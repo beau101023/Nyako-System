@@ -6,6 +6,6 @@ VAD, _ = torch.hub.load(repo_or_dir='snakers4/silero-vad',
                               model='silero_vad',
                               onnx=True)
 
-from nyako_params import INPUT_SAMPLING_RATE
+from params import INPUT_SAMPLING_RATE
 def detectVoiceActivity(buf):
     return VAD(torch.from_numpy(np.frombuffer(buf, dtype=np.float32)), INPUT_SAMPLING_RATE).item()

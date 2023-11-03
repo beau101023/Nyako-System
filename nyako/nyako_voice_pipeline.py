@@ -5,9 +5,9 @@ from time import sleep
 import numpy as np
 import torchaudio
 
-from nyako_llm import ConversationSession
+from LLM.nyako_llm import ConversationSession
 from nyako_te import enhance
-from nyako_stt import handleSpeechToText
+from nyako_stt import transcribeSpeech
 from nyako_vad import detectVoiceActivity
 from nyako_tts import say
 
@@ -17,7 +17,7 @@ torch.set_num_threads(3)
 # audio subsystem         
 audio = pyaudio.PyAudio()
 
-from nyako_params import nyako_prompt
+from params import nyako_prompt
 session = ConversationSession(nyako_prompt)
 
 # counter for how long there has been no speech input
@@ -45,7 +45,7 @@ def microphoneInputCallback(in_data, frame_count, time_info, status):
             speechRecordingTriggered = False
             noSpeechTime = 0
 
-            recordedText = handleSpeechToText(speechBuffer)
+            recordedText = transcribeSpeech(speechBuffer)
             print("Recorded Text: " + recordedText)
 
             # clear buffer after STT
@@ -74,7 +74,7 @@ def microphoneInputCallback(in_data, frame_count, time_info, status):
 
 print("Nyako listening...")
 # starts main loop
-from nyako_params import FramesPerBuffer, INPUT_SAMPLING_RATE
+from params import FramesPerBuffer, INPUT_SAMPLING_RATE
 stream = audio.open(rate=INPUT_SAMPLING_RATE, channels=1, input=True, format=pyaudio.paFloat32, frames_per_buffer=FramesPerBuffer, stream_callback=microphoneInputCallback)
 
 # clear ipynb output
