@@ -21,7 +21,7 @@ class SpeechToTextInput(Producer):
 
     async def run(self):
         self.stream = self.audio.open(rate=INPUT_SAMPLING_RATE, channels=1, input=True, format=pyaudio.paFloat32, frames_per_buffer=FramesPerBuffer, stream_callback=self.microphoneInputCallback)
-        while self.stream.is_active() or self.stream.is_stopped():
+        while True:
             await asyncio.sleep(0.1)
 
     async def getTask(self):

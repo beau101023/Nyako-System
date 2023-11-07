@@ -12,26 +12,6 @@ from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
 import tkinter as tk
 
 async def main():
-    console_input = ConsoleInput()
-    realtime_message_chunker = RealtimeMessageChunker()
-    conversation_session_processor = ConversationSessionProcessor()
-    console_output = ConsoleOutput()
-    emote_output = VisualOutput()
-
-    await console_input.link_to(realtime_message_chunker.priority_recieve)
-    await realtime_message_chunker.link_to(conversation_session_processor.receive)
-    await conversation_session_processor.link_to(console_output.receive)
-    await conversation_session_processor.link_to(emote_output.receive)
-
-    inputTask = await console_input.getTask()
-    chunkTask = await realtime_message_chunker.getTask()
-    emoteTask = await emote_output.getTask()
-
-    await asyncio.gather(inputTask, chunkTask, emoteTask)
-
-#asyncio.run(main())
-
-async def test():
     # create modules
     speech_to_text = SpeechToTextInput()
     message_chunker = RealtimeMessageChunker()
@@ -55,6 +35,9 @@ async def test():
     await conversation_session_processor.link_to(speech_output.receive)
     await conversation_session_processor.link_to(visual_output.receive)
 
+    await speech_output.whenSpeakingStarts(speech_to_text.mute)
+    await speech_output.whenSpeakingEnds(speech_to_text.unmute)
+
     print("listening...")
 
     # await tasks
@@ -62,4 +45,11 @@ async def test():
 
     speech_to_text.stop()
 
-asyncio.run(test())
+asyncio.run(main())
+
+async def test():
+    speech_output = TextToSpeechOutput()
+
+    speech_output.say("hello world")
+
+#asyncio.run(test())

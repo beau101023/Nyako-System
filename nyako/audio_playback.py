@@ -1,26 +1,27 @@
 import pyaudio
-import torchaudio
 import io
+import soundfile as sf
+
 
 p = pyaudio.PyAudio()
 
 # play audio from a tensor
 def playTTSAudio(audio_tensor):
-    audio_bytesIO = io.BytesIO()
-    torchaudio.save(audio_bytesIO, audio_tensor, sample_rate=48000, format='wav')
+    audio_np = audio_tensor.numpy()
+
+    #lower the volume
+    audio_np = audio_np / 1.25
+
+    # write to bytesio or the stream will only play the first teeny bit of audio
+    audio = io.BytesIO()
+    sf.write(audio, audio_np, 48000, format='wav', subtype='FLOAT')
+    audio.seek(0)
+    audio = audio.read()
 
     stream = p.open(format=pyaudio.paFloat32,
                     channels=1,
                     rate=48000,
                     output=True)
-    
-    audio_bytesIO.seek(0)
-    raw_wav = audio_bytesIO.read()
 
-    stream.write(raw_wav)
+    stream.write(audio)
     stream.close()
-
-# debug function to play audio direct from bytes object
-def playBuffer(buf):
-    buf = np.frombuffer(buf, dtype=np.float32)
-    display(Audio(buf, rate=16000))

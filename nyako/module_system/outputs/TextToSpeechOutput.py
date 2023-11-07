@@ -12,14 +12,15 @@ class TextToSpeechOutput(Listener):
         super().__init__()
 
     async def receive(self, message: str):
+        await self.speakingStart()
         self.say(message)
+        await self.speakingEnd()
 
     def say(self, text, ssml=False):
         #if(ssml):
         #    audio_tensor = model.apply_tts(ssml_text=text, speaker=speaker, sample_rate=sample_rate_out)
         #else:
         audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
-        audio_tensor.unsqueeze_(0)
 
         playTTSAudio(audio_tensor)
 
