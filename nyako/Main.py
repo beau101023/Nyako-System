@@ -1,5 +1,4 @@
 import asyncio
-from PIL import Image
 
 from module_system.inputs.ConsoleInput import ConsoleInput
 from module_system.outputs.ConsoleOutput import ConsoleOutput
@@ -8,48 +7,60 @@ from module_system.processors.ConversationSessionProcessor import ConversationSe
 from module_system.processors.RealtimeMessageChunker import RealtimeMessageChunker
 from module_system.inputs.SpeechToTextInput import SpeechToTextInput
 from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
+from module_system.processors.MessageRouter import MessageRouter
+from AdminEvents import AdminEvents
+from TaskManager import TaskManager
 
-import tkinter as tk
+from EventBus import EventBus
+from EventTopics import Topics
 
 async def main():
-    # create modules
-    speech_to_text = SpeechToTextInput()
-    message_chunker = RealtimeMessageChunker()
-    conversation_session_processor = ConversationSessionProcessor()
-    speech_output = TextToSpeechOutput()
-    visual_output = VisualOutput()
+
+    event_bus = EventBus()
+
+    # collects all tasks, must be created before task-producing modules
+    task_manager = TaskManager(event_bus)
+
+    # for events triggered by the admin running the bot
+    # eventually this'll be a control panel ui of some sort
+    admin_events = AdminEvents(event_bus)
+
+    # create modules. These are accessed, despite what pylance says
+    #speech_to_text = await SpeechToTextInput.create(event_bus)
+    console_input = await ConsoleInput.create(event_bus)
+
+    message_chunker = await RealtimeMessageChunker.create(event_bus)
+    conversation_session_processor = await ConversationSessionProcessor.create(event_bus)
+    message_router = MessageRouter(event_bus)
+
+    speech_output = await TextToSpeechOutput.create(event_bus)
+    visual_output = VisualOutput(event_bus)
 
     print("warming up...")
-    # warm up tts
-    speech_output.warmup()
-
-    print("getting tasks...")
-    stt_task = await speech_to_text.getTask()
-    chunker_task = await message_chunker.getTask()
-    emote_task = await visual_output.getTask()
+    event_bus.publish(Topics.System.PRE_LINKING)
 
     print("linking...")
     # link modules
-    await speech_to_text.link_to(message_chunker.receive)
-    await message_chunker.link_to(conversation_session_processor.receive)
-    await conversation_session_processor.link_to(speech_output.receive)
-    await conversation_session_processor.link_to(visual_output.receive)
+    event_bus.subscribe(message_chunker.onMessage, Topics.Pipeline.CONSOLE_IN)
+    
+    event_bus.subscribe(conversation_session_processor.onMessage, Topics.Pipeline.CHUNKER)
 
-    await speech_output.whenSpeakingStarts(speech_to_text.mute)
-    await speech_output.whenSpeakingEnds(speech_to_text.unmute)
+    event_bus.subscribe(visual_output.onMessage, Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    event_bus.subscribe(message_router.onMessage, Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
-    print("listening...")
+    event_bus.subscribe(speech_output.onMessage, Topics.Router.VOICE)
 
-    # await tasks
-    await asyncio.gather(stt_task, chunker_task, emote_task)
+    print("running!")
 
-    speech_to_text.stop()
+    # run tasks
+    await task_manager.run()
+
+    # stop tasks
+    event_bus.publish(Topics.System.STOP)
 
 asyncio.run(main())
 
 async def test():
-    speech_output = TextToSpeechOutput()
-
-    speech_output.say("hello world")
+    pass
 
 #asyncio.run(test())

@@ -1,24 +1,29 @@
 import asyncio
 from datetime import datetime, timedelta
-from module_system.core.listener import Listener
-from module_system.core.producer import Producer
+from EventTopics import Topics
 
-class RealtimeMessageChunker(Producer, Listener):
+class RealtimeMessageChunker:
     # gap_width_seconds is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
-    def __init__(self, processor_delay: int = 5, no_input_interval_seconds: int = 30):
-        super().__init__()
+    @classmethod
+    async def create(cls, event_bus, processor_delay: int = 5, no_input_interval_seconds: int = 30):
+        self = RealtimeMessageChunker()
+        self.event_bus = event_bus
+        
+        self.task = asyncio.create_task(self.chunk_messages())
+        await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+
+        # make sure the LLM gets error feedback
+        self.event_bus.subscribe(self.onMessage, Topics.Router.ERROR)
+
         self.no_input_interval_seconds = no_input_interval_seconds
         self.processor_delay = processor_delay
 
-        # have the reciever wait a bit before processing the first chunk of messages
         self.last_input_time = datetime.now()
-
-        # messages that have been received
         self.messages = []
-
-        # time when the last no input message was sent
         self.last_no_input_sent_time = datetime.now()
+
+        return self
 
     async def chunk_messages(self):
         self.last_input_time = datetime.now()
@@ -46,12 +51,12 @@ class RealtimeMessageChunker(Producer, Listener):
 
             await asyncio.sleep(1)
 
-    async def receive(self, message: str):
+    async def send(self, message: str):
+        await self.event_bus.publish(Topics.Pipeline.CHUNKER, message)
+
+    async def onMessage(self, message: str):
         self.messages.append(message)
 
     async def priority_recieve(self, message: str):
         self.messages.append(message)
         self.last_input_time = datetime.now()
-
-    async def getTask(self):
-        return asyncio.create_task(self.chunk_messages())

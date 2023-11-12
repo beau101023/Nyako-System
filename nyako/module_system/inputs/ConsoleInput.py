@@ -1,16 +1,21 @@
 import asyncio
-from module_system.core.producer import Producer
 from aioconsole import ainput
 
-class ConsoleInput(Producer):
-    def __init__(self):
-        super().__init__()
+from EventTopics import Topics
+from EventBus import EventBus
+
+class ConsoleInput:
+    event_bus: EventBus
+
+    @classmethod
+    async def create(cls, event_bus):
+        self = ConsoleInput()
+        self.event_bus = event_bus
+        self.task = asyncio.create_task(self.run())
+        await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+        return self
 
     async def run(self):
         while True:
             message = await ainput(">>> ")
-            await self.send(message)
-
-    async def getTask(self):
-        task = asyncio.create_task(self.run())
-        return task
+            await self.event_bus.publish(Topics.Pipeline.CONSOLE_IN, "[console] beau: " + message)

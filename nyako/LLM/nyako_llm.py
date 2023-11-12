@@ -55,7 +55,7 @@ class ConversationSession:
         self.memory = ""
     
 
-    def query(self, message):
+    def query(self, message: str):
 
         timeString = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
         self.messages.append(format_message_as_dict("user", timeString + message))
@@ -75,6 +75,9 @@ class ConversationSession:
             self.LLMMemorize()
 
         return response
+    
+    def updateSystemPrompt(self, newPrompt):
+        self.systemP = format_message_as_dict("system", newPrompt)
 
     def mostRecentMessage(self):
         return self.messages[-1]
@@ -82,15 +85,24 @@ class ConversationSession:
 
     # retrieves what'll be fed into the llm on the next query
     def getContext(self):
+        context = [self.systemP]
 
-        if(self.memory == ""):
-            return [self.systemP] + [self.getLongTermMemory()] + self.messages
-        else:
-            return [self.systemP] + [self.getLongTermMemory()] + [self.memory] + self.messages
+        if self.getLongTermMemory() != None:
+            context.append(self.getLongTermMemory())
+
+        if self.memory != "":
+            context.append(self.memory)
+
+        context += self.messages
+
+        return context
 
     def getLongTermMemory(self):
         memoryChunks = retrieveMemoriesWithContext(self.mostRecentMessage()["content"], ltm_retrieval_count, ltm_context_size)
         
+        if len(memoryChunks) == 0:
+            return None
+
         aggregateText = "[long-term memory]\n"
         count = 0
         for chunk in memoryChunks:

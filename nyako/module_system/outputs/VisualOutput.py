@@ -4,14 +4,15 @@ import asyncio
 import os
 from PIL import Image, ImageTk
 
-from module_system.core.listener import Listener
 from params import API_KEY
 
 openai.api_key = API_KEY
 
-class VisualOutput(Listener):
-    def __init__(self):
-        super().__init__()
+class VisualOutput:
+    def __init__(self, event_bus):
+        self.event_bus = event_bus
+        self.task = asyncio.create_task(self.updateWindowTask())
+
         self.window = tk.Tk()
         self.window.title("nyako")
         self.window.geometry("500x600")
@@ -27,21 +28,22 @@ class VisualOutput(Listener):
         self.setEmote("nyako/images/neutral.png")
         self.setText("[listening]")
 
-    async def receive(self, message: str):
+    async def onMessage(self, message: str):
         emotion = await self.ChatGPTClassify(message)
 
         self.setText(message)
         self.setEmote("nyako/images/" + emotion + ".png")
 
     async def ChatGPTClassify(self, message: str):
-        # emotion list: neutral,happy,wink,angry,disgust,surprised(positive),surprised(negative),sad,adoring,scared,inspired,questioning,confused,glitch,smug,exasperated,sleepy,asleep
+        # Get the list of possible emotions from the names of the files in the /nyako/images directory
+        possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("nyako/images/")]
 
         # Call the OpenAI API to classify the message
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the possible emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise"},
-                {"role": "user", "content": f"Possible emotions: neutral,happy,wink,crying,angry,disgust,surprised(positive),surprised(negative),sad,loving,adoring,scared,inspired,questioning,confused,glitch,smug,exasperated,asleep\nMessage: {message}"}],
+                {"role": "system", "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the given emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise"},
+                {"role": "user", "content": f"Possible emotions: {','.join(possible_emotions)}\nMessage: {message}"}],
             max_tokens=10,
             n=1,
             stop=None,
@@ -72,6 +74,3 @@ class VisualOutput(Listener):
         while True:
             self.window.update()
             await asyncio.sleep(0.1)
-
-    async def getTask(self):
-        return asyncio.create_task(self.updateWindowTask())

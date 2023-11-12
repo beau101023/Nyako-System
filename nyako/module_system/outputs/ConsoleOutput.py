@@ -1,10 +1,14 @@
-import asyncio
+from EventTopics import Topics
 
-from module_system.core.listener import Listener
+class ConsoleOutput:
+    @classmethod
+    async def create(self, event_bus):
+        self = ConsoleOutput()
+        self.tag = "console"
+        self.event_bus = event_bus
+        stateUpdate = Topics.OutputStateUpdate(self.tag, True)
+        await self.event_bus.publish(Topics.System.OUTPUT_STATE, stateUpdate)
+        return self
 
-class ConsoleOutput(Listener):
-    def __init__(self):
-        super().__init__()
-
-    async def receive(self, message: str):
+    async def onMessage(self, message: str):
         print("\n" + message)
