@@ -9,7 +9,10 @@ nyako/outputs/__pycache__
 nyako/processors/__pycache__
 OpenAI_Finetuning/nyako_data_repack.jsonl
 nyako/module_system/inputs/__pycache__
+nyako/module_system/outputs/__pycache__
+nyako/module_system/processors/__pycache__
 nyako/rvc_pipe
 nyako/vectordb/workspace_path
 nyako/vectordb/__pycache__
 nyako/rvc_voice_models
+nyako/inference_temp
