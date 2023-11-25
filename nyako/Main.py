@@ -1,6 +1,9 @@
 import asyncio
+import discord
 
 from module_system.inputs.ConsoleInput import ConsoleInput
+from module_system.inputs.DiscordInput import DiscordInput
+from module_system.outputs.DiscordOutput import DiscordOutput
 from module_system.outputs.ConsoleOutput import ConsoleOutput
 from module_system.outputs.VisualOutput import VisualOutput
 from module_system.processors.ConversationSessionProcessor import ConversationSessionProcessor
@@ -8,11 +11,14 @@ from module_system.processors.RealtimeMessageChunker import RealtimeMessageChunk
 from module_system.inputs.SpeechToTextInput import SpeechToTextInput
 from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
 from module_system.processors.MessageRouter import MessageRouter
+from module_system.outputs.CommandOutput import CommandOutput
 from AdminEvents import AdminEvents
 from TaskManager import TaskManager
 
 from EventBus import EventBus
 from EventTopics import Topics
+
+from params import DISCORD_BOT_TOKEN
 
 async def main():
 
@@ -23,40 +29,40 @@ async def main():
 
     # for events triggered by the admin running the bot
     # eventually this'll be a control panel ui of some sort
-    admin_events = AdminEvents(event_bus)
+    admin_events = await AdminEvents.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
     # create modules. These are accessed, despite what pylance says
-    #speech_to_text = await SpeechToTextInput.create(event_bus)
-    console_input = await ConsoleInput.create(event_bus)
+    #speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    #console_input = await ConsoleInput.create(event_bus)
+    discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    await event_bus.publish(Topics.System.TASK_CREATED, discord_input.start(DISCORD_BOT_TOKEN))
 
-    message_chunker = await RealtimeMessageChunker.create(event_bus)
-    conversation_session_processor = await ConversationSessionProcessor.create(event_bus)
-    message_router = MessageRouter(event_bus)
+    message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
+    conversation_session_processor = await ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    message_router = MessageRouter(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
-    speech_output = await TextToSpeechOutput.create(event_bus)
-    visual_output = VisualOutput(event_bus)
+    #console_output = await ConsoleOutput.create(event_bus)
+    #speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+    visual_output = await VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
+    discord_output = await DiscordOutput.create(event_bus, listen_topic=Topics.Router.DISCORD)
+
+    # enables textless commands like [listening], [sleep]
+    command_output = await CommandOutput.create(event_bus)
 
     print("warming up...")
-    event_bus.publish(Topics.System.PRE_LINKING)
+    await event_bus.publish(Topics.System.WARMUP)
 
     print("linking...")
-    # link modules
-    event_bus.subscribe(message_chunker.onMessage, Topics.Pipeline.CONSOLE_IN)
-    
-    event_bus.subscribe(conversation_session_processor.onMessage, Topics.Pipeline.CHUNKER)
+    # extra linking
+    #event_bus.subscribe(speech_output.onMessage, Topics.Router.SLEEP)
 
-    event_bus.subscribe(visual_output.onMessage, Topics.Pipeline.CONVERSATION_SESSION_REPLY)
-    event_bus.subscribe(message_router.onMessage, Topics.Pipeline.CONVERSATION_SESSION_REPLY)
-
-    event_bus.subscribe(speech_output.onMessage, Topics.Router.VOICE)
+    await command_output.setListeningEnabled(False)
+    await command_output.setSleepingEnabled(True)
 
     print("running!")
 
     # run tasks
     await task_manager.run()
-
-    # stop tasks
-    event_bus.publish(Topics.System.STOP)
 
 asyncio.run(main())
 

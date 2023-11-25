@@ -5,11 +5,12 @@ import re
 class MessageRouter():
     event_bus: EventBus
 
-    def __init__(self, event_bus):
+    def __init__(self, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
         self.event_bus = event_bus
         self.activeOutputs = set()
         self.errorFeedbackReceivers = []
         self.event_bus.subscribe(self.onOutputStateChanged, Topics.System.OUTPUT_STATE)
+        self.event_bus.subscribe(self.onMessage, listen_topic)
 
     async def onMessage(self, message: str):
 
@@ -33,12 +34,12 @@ class MessageRouter():
             tag = parts[i].strip()[1:-1].lower()
             message = parts[i + 1].strip()
 
-            if message == "":
-                continue
-
             await self.send(message, tag)
 
     async def onOutputStateChanged(self, event: Topics.OutputStateUpdate):
+        if not event.tag in self.activeOutputs and not event.output_active:
+            return
+        
         if event.output_active:
             self.activeOutputs.add(event.tag)
         else:

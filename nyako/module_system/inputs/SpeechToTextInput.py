@@ -11,11 +11,13 @@ torch.set_num_threads(3)
 
 class SpeechToTextInput:
     @classmethod
-    async def create(cls, event_bus):
+    async def create(cls, event_bus, publish_channel=Topics.Pipeline.USER_INPUT):
         self = SpeechToTextInput()
         self.event_bus = event_bus
         self.event_bus.subscribe(self.stop, Topics.System.STOP)
         self.event_bus.subscribe(self.onSpeakingStateUpdate, Topics.TTS.SPEAKING_STATE)
+
+        self.publish_to = publish_channel
 
         self.audio = pyaudio.PyAudio()
         self.noSpeechTime = 0
@@ -78,7 +80,7 @@ class SpeechToTextInput:
                     return (in_data, pyaudio.paContinue)
 
                 # send transcript to next modules
-                asyncio.run(self.event_bus.publish(Topics.Pipeline.SPEECH_TO_TEXT_IN, "[voice] beau: " + transcript))
+                asyncio.run(self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript))
         else:
             self.noSpeechTime = 0
 

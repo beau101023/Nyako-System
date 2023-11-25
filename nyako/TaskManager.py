@@ -11,6 +11,7 @@ class TaskManager:
         self.event_bus.subscribe(self.onTaskCreated, Topics.System.TASK_CREATED)
 
     def onTaskCreated(self, task):
+        print("Task registered for " + str(task))
         self.tasks.append(task)
 
     async def run(self):

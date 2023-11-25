@@ -1,6 +1,5 @@
 from docarray import BaseDoc
 from docarray.typing import NdArray
-from datetime import datetime
 
 class MemoryMessage(BaseDoc):
     text: str = ''

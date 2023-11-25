@@ -1,19 +1,19 @@
-import openai
 import tkinter as tk
 import asyncio
 import os
 from PIL import Image, ImageTk
+from EventTopics import Topics
 
-from params import API_KEY
-
-openai.api_key = API_KEY
+from params import CLIENT_INSTANCE as client
 
 class VisualOutput:
-    def __init__(self, event_bus):
-        self.event_bus = event_bus
-        self.task = asyncio.create_task(self.updateWindowTask())
+    stopped: bool = False
 
-        self.window = tk.Tk()
+    def __init__(self, event_bus, listen_topic, master):
+        self.event_bus = event_bus
+        self.task = self.updateWindowTask()
+
+        self.window = tk.Toplevel(master=master)
         self.window.title("nyako")
         self.window.geometry("500x600")
 
@@ -28,7 +28,19 @@ class VisualOutput:
         self.setEmote("nyako/images/neutral.png")
         self.setText("[listening]")
 
+        self.event_bus.subscribe(self.onMessage, listen_topic)
+        self.event_bus.subscribe(self.onStop, Topics.System.STOP)
+
+    @classmethod
+    async def create(cls, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=None):
+        self = VisualOutput(event_bus, listen_topic, master)
+        await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+        return self
+
     async def onMessage(self, message: str):
+        if message == None or self.stopped:
+            return
+
         emotion = await self.ChatGPTClassify(message)
 
         self.setText(message)
@@ -39,7 +51,7 @@ class VisualOutput:
         possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("nyako/images/")]
 
         # Call the OpenAI API to classify the message
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the given emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise"},
@@ -51,7 +63,7 @@ class VisualOutput:
         )
 
         # Get the emotion from the response
-        emotion = response['choices'][0]['message']['content']
+        emotion = response.choices[0].message.content
 
         # debug
         print(emotion)
@@ -71,6 +83,14 @@ class VisualOutput:
         self.text_panel.pack(side="bottom", fill="x", expand="yes")
 
     async def updateWindowTask(self):
-        while True:
+        while not self.stopped:
             self.window.update()
             await asyncio.sleep(0.1)
+
+        try:
+            self.window.destroy()
+        except tk.TclError:
+            pass
+
+    async def onStop(self):
+        self.stopped = True

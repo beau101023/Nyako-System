@@ -1,17 +1,29 @@
 import asyncio
 from datetime import datetime, timedelta
 from EventTopics import Topics
+from EventBus import EventBus
 
 class RealtimeMessageChunker:
+    event_bus: EventBus
+    stopped: bool = False
+    
     # gap_width_seconds is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
     @classmethod
-    async def create(cls, event_bus, processor_delay: int = 5, no_input_interval_seconds: int = 30):
+    async def create(cls, event_bus, processor_delay: int = 5, no_input_interval_seconds: int = 30, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER):
         self = RealtimeMessageChunker()
         self.event_bus = event_bus
+        self.send_topic = send_topic
         
         self.task = asyncio.create_task(self.chunk_messages())
         await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+
+        self.sleeping = False
+
+        self.event_bus.subscribe(self.onMessagePriority, listen_topic)
+        self.event_bus.subscribe(self.onSleep, Topics.System.SLEEP)
+        self.event_bus.subscribe(self.onWake, Topics.System.WAKE)
+        self.event_bus.subscribe(self.onStop, Topics.System.STOP)
 
         # make sure the LLM gets error feedback
         self.event_bus.subscribe(self.onMessage, Topics.Router.ERROR)
@@ -27,7 +39,11 @@ class RealtimeMessageChunker:
 
     async def chunk_messages(self):
         self.last_input_time = datetime.now()
-        while True:
+        while not self.stopped:
+            if self.sleeping:
+                await asyncio.sleep(1)
+                continue
+
             if len(self.messages) > 0 and datetime.now() - self.last_input_time > timedelta(seconds=self.processor_delay):
                 messages_to_process = self.messages
                 self.messages = []
@@ -52,11 +68,22 @@ class RealtimeMessageChunker:
             await asyncio.sleep(1)
 
     async def send(self, message: str):
-        await self.event_bus.publish(Topics.Pipeline.CHUNKER, message)
+        await self.event_bus.publish(self.send_topic, message)
 
     async def onMessage(self, message: str):
+        if(self.sleeping):
+            await self.event_bus.publish(Topics.System.WAKE)
         self.messages.append(message)
 
-    async def priority_recieve(self, message: str):
-        self.messages.append(message)
+    async def onMessagePriority(self, message: str):
         self.last_input_time = datetime.now()
+        await self.onMessage(message)
+
+    async def onSleep(self):
+        self.sleeping = True
+
+    async def onWake(self):
+        self.sleeping = False
+
+    async def onStop(self):
+        self.stopped = True

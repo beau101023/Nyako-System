@@ -1,9 +1,8 @@
 import discord
 import asyncio
-from threading import Thread
-from nyako_params import DISCORD_BOT_TOKEN
-from nyako_params import nyako_prompt
-from nyako_llm import ConversationSession
+from params import DISCORD_BOT_TOKEN
+from params import nyako_prompt
+from LLM.nyako_llm import ConversationSession
 
 intents = discord.Intents.default()
 intents.message_content = (

@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 
 from ocotillo.api import Transcriber

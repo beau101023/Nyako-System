@@ -1,15 +1,10 @@
 import pyaudio
 from IPython.display import clear_output
-from IPython.display import display
 from time import sleep
-import numpy as np
-import torchaudio
 
 from LLM.nyako_llm import ConversationSession
-from nyako_te import enhance
 from nyako_stt import transcribeSpeech
 from nyako_vad import detectVoiceActivity
-from nyako_tts import say
 
 import torch
 torch.set_num_threads(3)
