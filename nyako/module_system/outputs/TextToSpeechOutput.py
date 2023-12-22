@@ -38,9 +38,9 @@ class TextToSpeechOutput:
         if message == None or message == "" or message == " ":
             return
 
-        await self.speakingStart()
+        await self.publishSpeakingStart()
         self.say(message)
-        await self.speakingEnd()
+        await self.publishSpeakingEnd()
 
     async def onVolumeUpdate(self, event: Topics.VolumeUpdate):
         self.volume = event.volume
@@ -58,10 +58,10 @@ class TextToSpeechOutput:
         model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
         model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
 
-    async def speakingStart(self):
+    async def publishSpeakingStart(self):
         update = Topics.SpeakingStateUpdate(starting=True)
         await self.event_bus.publish(Topics.TTS.SPEAKING_STATE, update)
 
-    async def speakingEnd(self):
+    async def publishSpeakingEnd(self):
         update = Topics.SpeakingStateUpdate(ending=True)
         await self.event_bus.publish(Topics.TTS.SPEAKING_STATE, update)
