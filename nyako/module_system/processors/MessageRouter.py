@@ -2,6 +2,8 @@ from EventTopics import Topics
 from EventBus import EventBus
 import re
 
+from params import debug_mode
+
 class MessageRouter():
     event_bus: EventBus
 
@@ -22,7 +24,7 @@ class MessageRouter():
 
         # If there is no valid tag, send an error
         if first_tag_index is None:
-            await self.sendErrorFeedback(self.invalidInputFeedback())
+            await self.all_outputs_send(message)
             return
 
         # Remove elements before the first valid tag
@@ -33,6 +35,10 @@ class MessageRouter():
             # Get the tag and the message
             tag = parts[i].strip()[1:-1].lower()
             message = parts[i + 1].strip()
+
+            # sends to all outputs except tagged. Sends before the main send to avoid getting interrupted if the shutdown command is sent
+            if debug_mode:
+                await self.all_outputs_except(message, tag)
 
             await self.send(message, tag)
 
@@ -52,21 +58,35 @@ class MessageRouter():
 
         topic = getattr(Topics.Router, tag.upper(), None)
         if topic is None:
-            await self.sendErrorFeedback(self.invalidInputFeedback())
+            await self.sendErrorFeedback(self.nonexistentTagFeedback(tag))
             return
 
-        print("ROUTING MESSAGE: '" + text + "' to TOPIC: " + topic)
+        if debug_mode:
+            print("ROUTING MESSAGE: '" + text + "' to TOPIC: " + topic)
 
         await self.event_bus.publish(topic, text)
-    
+
+    async def all_outputs_except(self, text: str, tag: str):
+        # send to every topic in router.outputs except the one specified in the tag
+        for output in [output for output in dir(Topics.Router.Outputs) if not output.startswith('__') and output != tag.upper()]:
+            await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[" + tag + "] " + text)
+
+    async def all_outputs_send(self, text: str):
+        # send to every topic in router.outputs except the one specified in the tag
+        for output in [output for output in dir(Topics.Router.Outputs) if not output.startswith('__')]:
+            await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[untagged] " + text)
+
     async def sendErrorFeedback(self, message):
-        await self.event_bus.publish(Topics.Router.ERROR, message)
+        try:
+            raise Exception(message)
+        except Exception as error:
+            await self.event_bus.publish(Topics.Router.ERROR, str(error))
 
     def getOutputTags(self):
         return [tag for tag in self.activeOutputs]
 
     def invalidInputFeedback(self):
-        return "[system] Invalid output tag. Tags look like [tag] and must be at the beginning of your message. Available outputs: [" + "], [".join(self.getOutputTags()) + "]"
+        return "[system] You need to tag your messages like \"["+self.getOutputTags()[0]+"] hi, I'm nyako!\" if you want the user to see them! Available tags: [" + "], [".join(self.getOutputTags()) + "]"
     
     def nonexistentTagFeedback(self, tag: str):
-        return "[system] The tag '" + tag + "' does not exist. Available outputs: [" + "], [".join(self.getOutputTags()) + "]"
+        return "[system] The tag '" + tag + "' is disabled! Available tags: [" + "], [".join(self.getOutputTags()) + "]"
