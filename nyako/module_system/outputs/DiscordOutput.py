@@ -21,5 +21,9 @@ class DiscordOutput:
         self.listeningChannel = channel
 
     async def send_message(self, message: str):
+        # discord will throw an error if the message is empty
+        if message is None or message == "":
+            return
+
         if self.listeningChannel is not None:
             await self.listeningChannel.send(message)
