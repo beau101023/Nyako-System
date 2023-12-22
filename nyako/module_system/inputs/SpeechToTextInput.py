@@ -2,12 +2,9 @@ import asyncio
 import pyaudio
 from nyako_stt import transcribeSpeech
 from nyako_vad import detectVoiceActivity
-import torch
-from params import FramesPerBuffer, INPUT_SAMPLING_RATE
+from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode
 
 from EventTopics import Topics
-
-torch.set_num_threads(3)
 
 class SpeechToTextInput:
     @classmethod
@@ -16,6 +13,7 @@ class SpeechToTextInput:
         self.event_bus = event_bus
         self.event_bus.subscribe(self.stop, Topics.System.STOP)
         self.event_bus.subscribe(self.onSpeakingStateUpdate, Topics.TTS.SPEAKING_STATE)
+        self.event_bus.subscribe(self.onInputVolumeUpdate, Topics.Audio.INPUT_VOLUME_UPDATE)
 
         self.publish_to = publish_channel
 
@@ -23,6 +21,7 @@ class SpeechToTextInput:
         self.noSpeechTime = 0
         self.speechRecordingTriggered = False
         self.speechBuffer = bytes()
+        self.input_gain = 1.0
 
         self.task = asyncio.create_task(self.run())
         await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
@@ -32,16 +31,20 @@ class SpeechToTextInput:
         self.stream.stop_stream()
         self.stream.close()
 
+    # simple keepalive deal
     async def run(self):
         self.stream = self.audio.open(rate=INPUT_SAMPLING_RATE, channels=1, input=True, format=pyaudio.paFloat32, frames_per_buffer=FramesPerBuffer, stream_callback=self.microphoneInputCallback)
         while True:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.3)
     
     async def onSpeakingStateUpdate(self, event: Topics.SpeakingStateUpdate):
         if event.starting:
             await self.mute()
         elif event.ending:
             await self.unmute()
+
+    async def onInputVolumeUpdate(self, event: Topics.VolumeUpdate):
+        self.input_gain = event.volume
 
     async def mute(self):
         self.stream.stop_stream()
@@ -54,6 +57,8 @@ class SpeechToTextInput:
 
         if isSpeakingProbability > 0.5 and not self.speechRecordingTriggered:
             self.speechRecordingTriggered = True
+            # raise user speaking state update event
+            asyncio.run(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)))
 
         if self.speechRecordingTriggered:
             self.speechBuffer += in_data
@@ -67,10 +72,14 @@ class SpeechToTextInput:
                 self.noSpeechTime = 0
 
                 # decode speech
-                transcript = transcribeSpeech(self.speechBuffer)
+                transcript = transcribeSpeech(self.speechBuffer, input_gain=self.input_gain)
+
+                # raise user speaking state update event
+                asyncio.run(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)))
 
                 # debug
-                print("Transcript: " + transcript)
+                if debug_mode:
+                    print("Transcript: " + transcript)
 
                 # clear buffer after STT
                 self.speechBuffer = bytes()
