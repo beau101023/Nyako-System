@@ -46,7 +46,7 @@ async def main():
 
     # region Input Modules
 
-    #speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
     #console_input = await ConsoleInput.create(event_bus)
     #discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
     
@@ -55,7 +55,7 @@ async def main():
     # region Processing Modules
 
     ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
-    #message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
+    message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
     
     ## The conversation session processor queries the LLM
     conversation_session_processor = await ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
