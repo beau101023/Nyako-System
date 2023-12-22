@@ -2,6 +2,8 @@ import discord
 from EventTopics import Topics
 from EventBus import EventBus
 
+from params import DISCORD_BOT_TOKEN
+
 class DiscordInput(discord.Client):
     event_bus: EventBus
     publish_channel: str
@@ -19,8 +21,16 @@ class DiscordInput(discord.Client):
         self.publish_channel = publish_channel
 
         self.event_bus.subscribe(self.onStop, Topics.System.STOP)
+        self.event_bus.subscribe(self.on_warmup, Topics.System.WARMUP)
+
+        await event_bus.publish(Topics.System.TASK_CREATED, self.start(DISCORD_BOT_TOKEN))
 
         return self
+
+    # nyako will spam messages to herself but not have them sent if there's no active channel, so put her to sleep
+    async def on_warmup(self):
+        if(self.listeningChannel == None):
+            await self.event_bus.publish(Topics.System.SLEEP)
 
     async def on_message(self, message: discord.Message):
 
