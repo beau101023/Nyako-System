@@ -26,33 +26,67 @@ from params import DISCORD_BOT_TOKEN
 
 async def main():
 
+    # region Core Modules
+
+    ## The event bus is the central hub of the system.
     event_bus = EventBus()
 
-    # collects all tasks, must be created before task-producing modules
+    ## Collects all tasks, must be created before task-producing modules
     task_manager = TaskManager(event_bus)
 
+    ## Handles automated waking of the system after periods of inactivity
+    ## Can be triggered by raising Topics.System.SLEEP
+    ##  and woken prematurely by raising Topics.System.WAKE
     sleep_manager = await SleepManager.create(event_bus)
 
-    # for events triggered by the admin running the bot
-    # eventually this'll be a control panel ui of some sort
+    ## Control panel ui
     admin_events = await AdminEvents.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    
+    # endregion
 
-    # create modules. These are accessed, despite what pylance says
-    speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    # region Input Modules
+
+    #speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
     #console_input = await ConsoleInput.create(event_bus)
     #discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    
+    # endregion
 
-    message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
+    # region Processing Modules
+
+    ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
+    #message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
+    
+    ## The conversation session processor queries the LLM
     conversation_session_processor = await ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    
+    ## The message router sends the results to the output modules based on a tagging system
+    ## For example, if the LLM produces an output with the string "[voice]", the message router will send the text after that tag to the voice output module
     message_router = MessageRouter(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+
+    # endregion
+
+    # region Output Modules
 
     #console_output = await ConsoleOutput.create(event_bus)
     speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+
+    ## Provides a visual complement to other outputs
+    ## Current implementation is a simple window that displays emotion images based on sentiment analysis of the conversation
     #visual_output = await VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
+
     #discord_output = await DiscordOutput.create(event_bus, listen_topic=Topics.Router.DISCORD)
 
-    # enables textless commands like [listening], [sleep]
+    ## Accepts textless commands from the LLM.
+    ## TODO: make the command syntax more distinct and understandable.
+    ##  LLM seems to have a hard time differentiating between commands and output tags.
+    ## current commands:
+    ##   - [sleep] - puts the system to sleep for one hour, during which it can be woken by any input but will not produce idle messages
+    ##   - [listen] - does nothing. Allows the LLM to wait for further input.
+    ##   - [shutdown] - stops the system.
     command_output = await CommandOutput.create(event_bus)
+
+    # endregion
 
     print("warming up...")
     await event_bus.publish(Topics.System.WARMUP)
