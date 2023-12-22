@@ -1,3 +1,6 @@
+import torch
+torch.set_num_threads(3)
+
 import asyncio
 import discord
 
@@ -14,6 +17,7 @@ from module_system.processors.MessageRouter import MessageRouter
 from module_system.outputs.CommandOutput import CommandOutput
 from AdminEvents import AdminEvents
 from TaskManager import TaskManager
+from module_system.core.SleepManager import SleepManager
 
 from EventBus import EventBus
 from EventTopics import Topics
@@ -27,24 +31,25 @@ async def main():
     # collects all tasks, must be created before task-producing modules
     task_manager = TaskManager(event_bus)
 
+    sleep_manager = await SleepManager.create(event_bus)
+
     # for events triggered by the admin running the bot
     # eventually this'll be a control panel ui of some sort
     admin_events = await AdminEvents.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
     # create modules. These are accessed, despite what pylance says
-    #speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
     #console_input = await ConsoleInput.create(event_bus)
-    discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
-    await event_bus.publish(Topics.System.TASK_CREATED, discord_input.start(DISCORD_BOT_TOKEN))
+    #discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
 
     message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
     conversation_session_processor = await ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
     message_router = MessageRouter(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
     #console_output = await ConsoleOutput.create(event_bus)
-    #speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
-    visual_output = await VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
-    discord_output = await DiscordOutput.create(event_bus, listen_topic=Topics.Router.DISCORD)
+    speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+    #visual_output = await VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
+    #discord_output = await DiscordOutput.create(event_bus, listen_topic=Topics.Router.DISCORD)
 
     # enables textless commands like [listening], [sleep]
     command_output = await CommandOutput.create(event_bus)
@@ -54,10 +59,6 @@ async def main():
 
     print("linking...")
     # extra linking
-    #event_bus.subscribe(speech_output.onMessage, Topics.Router.SLEEP)
-
-    await command_output.setListeningEnabled(False)
-    await command_output.setSleepingEnabled(True)
 
     print("running!")
 
