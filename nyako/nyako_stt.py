@@ -11,8 +11,11 @@ else:
 
 # accepts a bytes object containing raw audio data
 # returns a string containing the decoded text
-def transcribeSpeech(speechBuffer):
+def transcribeSpeech(speechBuffer, input_gain=1.0):
     speechBufferNumPyArray = np.fromstring(speechBuffer, dtype=np.float32)
+
+    # apply input gain
+    speechBufferNumPyArray *= input_gain
 
     # returns decoded text
     return TSR.transcribe(speechBufferNumPyArray, sample_rate=INPUT_SAMPLING_RATE)

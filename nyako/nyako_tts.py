@@ -1,6 +1,5 @@
 import torch
-from audio_playback import playAudioTensor
-from audio_playback import playAudioBytes
+from audio_playback import playAudio
 
 from rvc_pipe.rvc_infer import rvc_convert
 
@@ -13,24 +12,20 @@ model, _ = torch.hub.load('snakers4/silero-models', 'silero_tts', language=langu
 model.to(device)
 
 # text to raw audio
-def say(text, ssml=False):
-    try:
-        if(ssml):
-            audio_tensor = model.apply_tts(ssml_text=text, speaker=speaker, sample_rate=sample_rate_out)
-        else:
-            audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
-    except Exception as e:
-        print("TTS failure. Message: " + e.args[0])
-        return
-
-    playAudioTensor(audio_tensor)
-
-async def sayWithRVC(text):
-
+def say(text, volume=1.0):
     try:
         audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
     except Exception as e:
-        print("TTS failure. Message: " + text)
+        print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
+        return
+
+    playAudio(audio_tensor, volume=volume)
+
+def sayWithRVC(text, volume=1.0):
+    try:
+        audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
+    except Exception as e:
+        print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
         return
 
     # normalize
@@ -51,7 +46,7 @@ async def sayWithRVC(text):
     with sf.SoundFile('nyako/inference_temp/voice_conv.wav', mode='r') as f:
         audio = f.read(dtype='float32')
 
-    playAudioBytes(audio.tobytes())
+    playAudio(audio, volume=volume)
 
 # torch optimizer warmup
 def warmup():
