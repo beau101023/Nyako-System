@@ -10,7 +10,7 @@ class RealtimeMessageChunker:
     event_bus: EventBus
     stopped: bool = False
     
-    # gap_width_seconds is the amount of time to wait after the last message before processing the messages
+    # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
     @classmethod
     async def create(cls, event_bus, processor_delay: int = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER):
@@ -34,7 +34,7 @@ class RealtimeMessageChunker:
         self.event_bus.subscribe(self.onMessage, Topics.Router.ERROR)
 
         self.no_input_interval_seconds = no_input_interval_seconds
-        self.processor_delay = processor_delay
+        self.processor_delay: float = processor_delay
 
         self.last_input_time = datetime.now()
         self.messages = []
@@ -49,19 +49,15 @@ class RealtimeMessageChunker:
                 await asyncio.sleep(1)
                 continue
 
-            if len(self.messages) > 0 and datetime.now() - self.last_input_time > timedelta(seconds=self.processor_delay):
+            if self.messages_queued() and self.user_has_been_inactive_for_at_least(self.processor_delay):
                 await self.process_messages()
 
                 # delay the next chunk of messages by the processor delay
                 self.last_input_time = datetime.now()
 
-            elif len(self.messages) == 0 and datetime.now() - self.last_input_time > timedelta(seconds=self.no_input_interval_seconds):
-                if datetime.now() >= self.last_no_input_sent_time + timedelta(seconds=self.no_input_interval_seconds):
-                    time_since_last_input = str(datetime.now() - self.last_input_time).split(".")[0]
-
-                    messages = "[no input ({0}s)]".format(time_since_last_input)
-
-                    await self.send(messages)
+            elif self.no_messages_queued() and self.user_has_been_inactive_for_at_least(self.no_input_interval_seconds):
+                if self.is_no_input_message_due():
+                    await self.send_no_input_message()
                     self.last_no_input_sent_time = datetime.now()
 
             await asyncio.sleep(1)
@@ -69,6 +65,25 @@ class RealtimeMessageChunker:
         # send any remaining messages
         if len(self.messages) > 0:
             await self.process_messages()
+
+    def is_no_input_message_due(self):
+        return datetime.now() >= self.last_no_input_sent_time + timedelta(seconds=self.no_input_interval_seconds)
+
+    async def send_no_input_message(self):
+        time_since_last_input = str(datetime.now() - self.last_input_time).split(".")[0]
+
+        messages = "[no input ({0}s)]".format(time_since_last_input)
+
+        await self.send(messages)
+
+    def no_messages_queued(self):
+        return len(self.messages) == 0
+
+    def user_has_been_inactive_for_at_least(self, seconds: int):
+        return datetime.now() - self.last_input_time > timedelta(seconds=seconds)
+
+    def messages_queued(self):
+        return len(self.messages) > 0
 
     async def process_messages(self):
         messages_to_process = self.messages
