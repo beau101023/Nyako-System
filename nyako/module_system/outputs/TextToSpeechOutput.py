@@ -5,6 +5,8 @@ from EventTopics import Topics
 from EventBus import EventBus
 import asyncio
 
+from params import advanced_voice_enabled
+
 model, _ = torch.hub.load('snakers4/silero-models', 'silero_tts', language=language, speaker=model_id)
 model.to(device)
 
@@ -14,29 +16,45 @@ class TextToSpeechOutput:
     @classmethod
     async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
         self = TextToSpeechOutput()
+
+        # init
         self.tag = "voice"
+        self.volume: float = 1.0
         self.event_bus = event_bus
-        self.event_bus.subscribe(self.warmup, Topics.System.WARMUP)
+
+        # subscribe to events
+        self.event_bus.subscribe(self.onWarmup, Topics.System.WARMUP)
         self.event_bus.subscribe(self.onMessage, listen_topic)
+        self.event_bus.subscribe(self.onVolumeUpdate, Topics.Audio.OUTPUT_VOLUME_UPDATE)
+
+        # notify system that tts is ready
         stateUpdate = Topics.OutputStateUpdate(self.tag, True)
         await self.event_bus.publish(Topics.System.OUTPUT_STATE, stateUpdate)
+
         return self
 
     async def onMessage(self, message: str):
+        # tts breaks if you send it nothing
+        if message == None or message == "" or message == " ":
+            return
+
         await self.speakingStart()
         self.say(message)
         await self.speakingEnd()
 
+    async def onVolumeUpdate(self, event: Topics.VolumeUpdate):
+        self.volume = event.volume
 
-    def say(self, text, ssml=False):
-        #if(ssml):
-        #    audio_tensor = model.apply_tts(ssml_text=text, speaker=speaker, sample_rate=sample_rate_out)
-        #else:
-
-        _ = asyncio.create_task(nyako_tts.sayWithRVC(text))
+    def say(self, text):
+        if(advanced_voice_enabled):
+            nyako_tts.sayWithRVC(text, volume=self.volume)
+            return
+        else:
+            nyako_tts.say(text, volume=self.volume)
+            return
         
 
-    def warmup(self):
+    def onWarmup(self):
         model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
         model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
 
