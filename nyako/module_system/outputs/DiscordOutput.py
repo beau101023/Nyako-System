@@ -9,10 +9,13 @@ class DiscordOutput:
         self.listeningChannel = None
 
     @classmethod
-    async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
+    async def create(cls, event_bus: EventBus, client: discord.Client, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
         self = DiscordOutput(event_bus, recieve_topic=listen_topic)
         self.event_bus.subscribe(self.set_channel, Topics.Discord.LISTENING_CHANNEL_SET)
         self.event_bus.subscribe(self.send_message, self.recieve_topic)
+
+        # class doesn't directly use a client but does need a DiscordInput to set the channel
+        self.client = client
 
         await self.event_bus.publish(Topics.System.OUTPUT_STATE, Topics.OutputStateUpdate("discord", True))
         return self
