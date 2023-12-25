@@ -7,7 +7,7 @@ class AdminEvents:
 
     def __init__(self, event_bus, listen_topic):
         self.event_bus = event_bus
-        self.task = self.updateWindowTask()
+        self.task = asyncio.create_task(self.updateWindowTask())
 
         self.window = tk.Tk()
         self.window.title("Admin Events")
@@ -86,6 +86,7 @@ class AdminEvents:
         while not self.stopped:
             self.window.update()
             await self.update_sliders()
+            # 60 updates per second
             await asyncio.sleep(0.015)
 
         self.window.destroy()
