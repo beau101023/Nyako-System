@@ -11,7 +11,6 @@ class VisualOutput:
 
     def __init__(self, event_bus, listen_topic, master):
         self.event_bus = event_bus
-        self.task = self.updateWindowTask()
 
         self.window = tk.Toplevel(master=master)
         self.window.title("nyako")
@@ -34,7 +33,10 @@ class VisualOutput:
     @classmethod
     async def create(cls, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=None):
         self = VisualOutput(event_bus, listen_topic, master)
+
+        self.task = asyncio.create_task(self.updateWindowTask())
         await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+        
         return self
 
     async def onMessage(self, message: str):
