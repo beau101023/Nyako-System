@@ -17,11 +17,12 @@ class SpeechToTextInput:
 
         self.publish_to = publish_channel
 
-        self.audio = pyaudio.PyAudio()
+        self.audio: pyaudio.PyAudio = pyaudio.PyAudio()
         self.noSpeechTime = 0
         self.speechRecordingTriggered = False
         self.speechBuffer = bytes()
         self.input_gain = 1.0
+        self.stopped = False
 
         self.task = asyncio.create_task(self.run())
         await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
@@ -30,12 +31,13 @@ class SpeechToTextInput:
     def stop(self):
         self.stream.stop_stream()
         self.stream.close()
-
+        self.stopped = True
+    
     # simple keepalive deal
     async def run(self):
         self.stream = self.audio.open(rate=INPUT_SAMPLING_RATE, channels=1, input=True, format=pyaudio.paFloat32, frames_per_buffer=FramesPerBuffer, stream_callback=self.microphoneInputCallback)
-        while True:
-            await asyncio.sleep(0.3)
+        while not self.stopped:
+            await asyncio.sleep(0.1)
     
     async def onSpeakingStateUpdate(self, event: Topics.SpeakingStateUpdate):
         if event.starting:
