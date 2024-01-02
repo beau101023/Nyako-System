@@ -1,9 +1,6 @@
 import discord
 from EventTopics import Topics
 from EventBus import EventBus
-import asyncio
-
-from params import DISCORD_BOT_TOKEN
 
 class DiscordInput:
     event_bus: EventBus
@@ -11,9 +8,7 @@ class DiscordInput:
     client: discord.Client
 
     def __init__(self):
-        intents = discord.Intents.default()
-        intents.message_content = True
-        self.client = discord.Client(intents=intents)
+        pass
 
     @classmethod
     async def create(cls, event_bus: EventBus, client: discord.Client, publish_channel=Topics.Pipeline.USER_INPUT):
