@@ -16,3 +16,6 @@ class DiscordClientRunner:
         await event_bus.publish(Topics.System.TASK_CREATED, self.task)
 
         return self
+    
+    def getClient(self):
+        return self.client
