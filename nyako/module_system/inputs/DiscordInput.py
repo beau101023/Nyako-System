@@ -18,6 +18,8 @@ class DiscordInput:
         self.publish_channel = publish_channel
         self.client = client
 
+        client.event(self.onMessage)
+
         self.event_bus.subscribe(self.onStop, Topics.System.STOP)
         self.event_bus.subscribe(self.onWarmup, Topics.System.WARMUP)
 
@@ -27,9 +29,7 @@ class DiscordInput:
         if(self.listeningChannel == None):
             await self.event_bus.publish(Topics.System.SLEEP)
 
-    @client.event
     async def onMessage(self, message: discord.Message):
-
         if message.author.id == self.client.user.id:
             return
 
