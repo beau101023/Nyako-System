@@ -2,7 +2,7 @@ import asyncio
 import pyaudio
 from nyako_stt import transcribeSpeech
 from nyako_vad import detectVoiceActivity
-from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode
+from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
 from EventTopics import Topics
 
@@ -57,10 +57,10 @@ class SpeechToTextInput:
     def microphoneInputCallback(self, in_data, frame_count, time_info, status):
         isSpeakingProbability = detectVoiceActivity(in_data)
 
-        if isSpeakingProbability > 0.5 and not self.speechRecordingTriggered:
+        if isSpeakingProbability > speech_sensitivity_threshold and not self.speechRecordingTriggered:
             self.speechRecordingTriggered = True
             # raise user speaking state update event
-            asyncio.run(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)))
+            asyncio.ensure_future(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)))
 
         if self.speechRecordingTriggered:
             self.speechBuffer += in_data
@@ -77,7 +77,7 @@ class SpeechToTextInput:
                 transcript = transcribeSpeech(self.speechBuffer, input_gain=self.input_gain)
 
                 # raise user speaking state update event
-                asyncio.run(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)))
+                asyncio.ensure_future(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)))
 
                 # debug
                 if debug_mode:
@@ -91,7 +91,7 @@ class SpeechToTextInput:
                     return (in_data, pyaudio.paContinue)
 
                 # send transcript to next modules
-                asyncio.run(self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript))
+                asyncio.ensure_future(self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript))
         else:
             self.noSpeechTime = 0
 
