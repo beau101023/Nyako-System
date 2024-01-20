@@ -6,18 +6,24 @@ import discord
 
 from module_system.inputs.ConsoleInput import ConsoleInput
 from module_system.inputs.DiscordInput import DiscordInput
+from module_system.inputs.discord_voice_input.DiscordVoiceInput import DiscordVoiceInput
+from module_system.inputs.SpeechToTextInput import SpeechToTextInput
+
 from module_system.outputs.DiscordOutput import DiscordOutput
 from module_system.outputs.ConsoleOutput import ConsoleOutput
 from module_system.outputs.VisualOutput import VisualOutput
+from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
+
 from module_system.processors.ConversationSessionProcessor import ConversationSessionProcessor
 from module_system.processors.RealtimeMessageChunker import RealtimeMessageChunker
-from module_system.inputs.SpeechToTextInput import SpeechToTextInput
-from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
 from module_system.processors.MessageRouter import MessageRouter
+
 from module_system.outputs.CommandOutput import CommandOutput
 from AdminEvents import AdminEvents
 from TaskManager import TaskManager
+
 from module_system.core.SleepManager import SleepManager
+from module_system.core.DiscordClientRunner import DiscordClientRunner
 
 from EventBus import EventBus
 from EventTopics import Topics
@@ -34,6 +40,10 @@ async def main():
     ## Collects all tasks, must be created before task-producing modules
     task_manager = TaskManager(event_bus)
 
+    ## Handles the discord client
+    discord_client_runner = await DiscordClientRunner.create(event_bus)
+    discord_client = discord_client_runner.getClient()
+
     ## Handles automated waking of the system after periods of inactivity
     ## Can be triggered by raising Topics.System.SLEEP
     ##  and woken prematurely by raising Topics.System.WAKE
@@ -46,9 +56,13 @@ async def main():
 
     # region Input Modules
 
-    speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    ## Multi-user voice input via discord
+    ## Joins the first voice channel available to the discord client
+    discord_voice_input = await DiscordVoiceInput.create(event_bus, discord_client, publish_channel=Topics.Pipeline.USER_INPUT)
+    
+    #speech_to_text = await SpeechToTextInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
     #console_input = await ConsoleInput.create(event_bus)
-    #discord_input = await DiscordInput.create(event_bus, publish_channel=Topics.Pipeline.USER_INPUT)
+    #discord_input = await DiscordInput.create(event_bus, discord_client, publish_channel=Topics.Pipeline.USER_INPUT)
     
     # endregion
 
@@ -68,14 +82,14 @@ async def main():
 
     # region Output Modules
 
-    #console_output = await ConsoleOutput.create(event_bus)
-    speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+    console_output = await ConsoleOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+    #speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
 
     ## Provides a visual complement to other outputs
     ## Current implementation is a simple window that displays emotion images based on sentiment analysis of the conversation
     #visual_output = await VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
 
-    #discord_output = await DiscordOutput.create(event_bus, listen_topic=Topics.Router.DISCORD)
+    #discord_output = await DiscordOutput.create(event_bus, discord_client, listen_topic=Topics.Router.DISCORD)
 
     ## Accepts textless commands from the LLM.
     ## TODO: make the command syntax more distinct and understandable.
