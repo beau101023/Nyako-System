@@ -17,3 +17,4 @@ nyako/vectordb/__pycache__
 nyako/rvc_voice_models
 nyako/inference_temp
 nyako/module_system/core/__pycache__
+nyako/module_system/inputs/discord_voice_input/__pycache__
