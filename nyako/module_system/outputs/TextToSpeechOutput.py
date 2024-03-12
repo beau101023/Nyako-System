@@ -56,8 +56,7 @@ class TextToSpeechOutput:
         
 
     def onWarmup(self):
-        model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
-        model.apply_tts('t', speaker=speaker, sample_rate=sample_rate_out)
+        nyako_tts.warmup()
 
     async def publishSpeakingStart(self):
         update = Topics.SpeakingStateUpdate(starting=True)
