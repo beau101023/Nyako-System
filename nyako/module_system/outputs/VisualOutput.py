@@ -7,6 +7,11 @@ from EventTopics import Topics
 from params import CLIENT_INSTANCE as client
 
 class VisualOutput:
+    """
+    Provides a visual complement to other outputs.
+    Current implementation is a simple window that displays emotion images based on sentiment analysis of the conversation.
+    """
+
     stopped: bool = False
 
     def __init__(self, event_bus, listen_topic, master):
@@ -32,6 +37,15 @@ class VisualOutput:
 
     @classmethod
     async def create(cls, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=None):
+        """
+        Creates an instance of the VisualOutput module.
+
+        Parameters:
+        event_bus (EventBus): the event bus to use
+        listen_topic (str): the channel to listen to for messages
+        master (tk.Tk): the master window to use
+        """
+
         self = VisualOutput(event_bus, listen_topic, master)
 
         self.task = asyncio.create_task(self.updateWindowTask())
