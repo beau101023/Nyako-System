@@ -114,20 +114,21 @@ from typing import Dict
 # transcriber object pool to avoid the overhead of spinning up a new transcriber on demand
 #  one transcriber is required for every audio stream because transcribers may be stateful
 class TranscriberPool:
-    def __init__(self, spare_transcribers=2):
-        self.pool = {}
-        self.overflow_pool_size = spare_transcribers
+    def __init__(self, TranscriberClass: Type[Transcriber] = WhisperTranscriber, spare_transcribers: int = 2):
+        self.TranscriberClass: Type[Transcriber] = TranscriberClass
+        self.pool: Dict[str, Transcriber] = {}
+        self.overflow_pool_size: int = spare_transcribers
         self.overflow_pool: Queue = Queue()
         
-        for i in range(spare_transcribers):
+        for _ in range(spare_transcribers):
             self.initializeTranscriber()
 
-    def getTranscriber(self, user_id):
-        transcriber = None
+    def getTranscriber(self, user_id: str) -> Transcriber:
+        transcriber: Transcriber = None
 
         if user_id in self.pool:
             transcriber = self.pool[user_id]
-        elif len(self.overflow_pool) > 0:
+        elif not self.overflow_pool.empty():
             transcriber = self.overflow_pool.get()
             self.pool[user_id] = transcriber
         else:
@@ -136,19 +137,21 @@ class TranscriberPool:
             transcriber = self.overflow_pool.get()
             self.pool[user_id] = transcriber
 
-        if len(self.overflow_pool) < self.overflow_pool_size:
-            thread = Thread(target=self.threadInitializeTranscriber, args=(self.overflow_pool_size-len(self.overflow_pool),))
+        if self.overflow_pool.qsize() < self.overflow_pool_size:
+            thread: Thread = Thread(target=self.threadInitializeTranscriber, args=(self.overflow_pool_size - self.overflow_pool.qsize(),))
             thread.start()
 
         if transcriber is None:
             raise Exception("Transcriber is None")
 
+        return transcriber
+
     def threadInitializeTranscriber(self, amt: int):
-        for i in range(amt):
+        for _ in range(amt):
             self.initializeTranscriber()
 
     def initializeTranscriber(self):
         if device == 'cuda':
-            self.overflow_pool.put(Transcriber(on_cuda=True))
+            self.overflow_pool.put(self.TranscriberClass(on_cuda=True))
         else:
-            self.overflow_pool.put(Transcriber(on_cuda=False))
+            self.overflow_pool.put(self.TranscriberClass(on_cuda=False))
