@@ -18,6 +18,17 @@ class SpeechToTextInput:
         transcriber: nyako_stt.Transcriber=nyako_stt.WhisperTranscriber(),
         publish_channel=Topics.Pipeline.USER_INPUT
         ):
+        """
+        Creates an instance of the SpeechToTextInput module.
+
+        Parameters:
+        event_bus (EventBus): the event bus to use
+        transcriber (nyako_stt.Transcriber): the transcriber to use
+        publish_channel (str): the channel
+
+        Returns:
+        SpeechToTextInput: the created instance
+        """
         self = SpeechToTextInput()
 
         self.asyncio_main_loop = asyncio.get_event_loop()
