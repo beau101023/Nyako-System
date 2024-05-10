@@ -1,15 +1,24 @@
 import asyncio
 import pyaudio
-from nyako_stt import transcribeSpeech
+import nyako_stt
 from nyako_vad import detectVoiceActivity
 from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
 from EventTopics import Topics
 
 class SpeechToTextInput:
+    transcriber: nyako_stt.Transcriber
+
     @classmethod
-    async def create(cls, event_bus, publish_channel=Topics.Pipeline.USER_INPUT):
+    async def create(
+        cls, event_bus,
+        transcriber: nyako_stt.Transcriber=nyako_stt.WhisperTranscriber(),
+        publish_channel=Topics.Pipeline.USER_INPUT
+        ):
         self = SpeechToTextInput()
+
+        self.transcriber = transcriber
+
         self.event_bus = event_bus
         self.event_bus.subscribe(self.stop, Topics.System.STOP)
         self.event_bus.subscribe(self.onSpeakingStateUpdate, Topics.TTS.SPEAKING_STATE)
@@ -74,7 +83,12 @@ class SpeechToTextInput:
                 self.noSpeechTime = 0
 
                 # decode speech
-                transcript = transcribeSpeech(self.speechBuffer, input_gain=self.input_gain)
+                transcript = self.transcriber.transcribeSpeech(self.speechBuffer, input_gain=self.input_gain)
+                
+                if(self.transcriber.supports_extra_tagging()):
+                    tags = self.transcriber.get_extra_tagging()
+                    tags_string = ", ".join(tags)  # Convert the list of tags to a string
+                    transcript = f"(Audio: {tags_string})" + transcript  # Prepend the tags to the transcript
 
                 # raise user speaking state update event
                 asyncio.ensure_future(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)))
