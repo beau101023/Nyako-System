@@ -4,9 +4,12 @@ import nyako_stt
 from nyako_vad import detectVoiceActivity
 from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
+from asyncio import AbstractEventLoop
+
 from EventTopics import Topics
 
 class SpeechToTextInput:
+    asyncio_main_loop: AbstractEventLoop
     transcriber: nyako_stt.Transcriber
 
     @classmethod
@@ -17,6 +20,7 @@ class SpeechToTextInput:
         ):
         self = SpeechToTextInput()
 
+        self.asyncio_main_loop = asyncio.get_event_loop()
         self.transcriber = transcriber
 
         self.event_bus = event_bus
@@ -69,7 +73,9 @@ class SpeechToTextInput:
         if isSpeakingProbability > speech_sensitivity_threshold and not self.speechRecordingTriggered:
             self.speechRecordingTriggered = True
             # raise user speaking state update event
-            asyncio.ensure_future(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)))
+            asyncio.run_coroutine_threadsafe(
+                self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)),
+                self.asyncio_main_loop)
 
         if self.speechRecordingTriggered:
             self.speechBuffer += in_data
@@ -91,7 +97,9 @@ class SpeechToTextInput:
                     transcript = f"(Audio: {tags_string})" + transcript  # Prepend the tags to the transcript
 
                 # raise user speaking state update event
-                asyncio.ensure_future(self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)))
+                asyncio.run_coroutine_threadsafe(
+                    self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)),
+                    self.asyncio_main_loop)
 
                 # debug
                 if debug_mode:
@@ -105,7 +113,9 @@ class SpeechToTextInput:
                     return (in_data, pyaudio.paContinue)
 
                 # send transcript to next modules
-                asyncio.ensure_future(self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript))
+                asyncio.run_coroutine_threadsafe(
+                    self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript),
+                    self.asyncio_main_loop)
         else:
             self.noSpeechTime = 0
 
