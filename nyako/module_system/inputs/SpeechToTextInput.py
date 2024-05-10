@@ -120,8 +120,8 @@ class SpeechToTextInput:
                 # clear buffer after STT
                 self.speechBuffer = bytes()
 
-                # make sure text is not empty
-                if transcript == "":
+                # make sure text is not empty or only whitespace
+                if not transcript.strip():
                     return (in_data, pyaudio.paContinue)
 
                 # send transcript to next modules
