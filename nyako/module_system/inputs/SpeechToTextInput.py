@@ -83,6 +83,7 @@ class SpeechToTextInput:
 
         if isSpeakingProbability > speech_sensitivity_threshold and not self.speechRecordingTriggered:
             self.speechRecordingTriggered = True
+
             # raise user speaking state update event
             asyncio.run_coroutine_threadsafe(
                 self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)),
