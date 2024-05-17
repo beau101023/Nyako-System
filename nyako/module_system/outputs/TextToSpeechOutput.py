@@ -1,9 +1,6 @@
-import torch
 import nyako_tts
-from params import sample_rate_out, language, model_id, speaker, device
 from EventTopics import Topics
 from EventBus import EventBus
-import asyncio
 import threading
 
 from params import advanced_voice_enabled
