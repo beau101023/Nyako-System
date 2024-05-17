@@ -6,7 +6,8 @@ from module_system.inputs.discord_voice_input.StreamSink import StreamSink
 import torch
 
 from nyako_vad import detectVoiceActivity
-from nyako_stt import transcribeSpeech
+from nyako_stt import Transcriber
+from nyako_stt import WhisperTranscriber
 
 from typing import Dict
 from pydub import AudioSegment
@@ -23,6 +24,7 @@ class DiscordVoiceInput:
     noSpeechTimeByUser : Dict[str, float]
     inputGain : float
     event_bus : EventBus
+    transcriber : Transcriber
 
     def __init__(self):
         self.voice_client: discord.VoiceClient = None
@@ -36,8 +38,9 @@ class DiscordVoiceInput:
         self.stopped = False
 
     @classmethod
-    async def create(cls, event_bus: EventBus, client: discord.Client, publish_channel=Topics.Pipeline.USER_INPUT):
+    async def create(cls, event_bus: EventBus, client: discord.Client, publish_channel=Topics.Pipeline.USER_INPUT, transcriber: Transcriber = WhisperTranscriber):
         self = DiscordVoiceInput()
+        self.transcriber = transcriber
         self.event_bus = event_bus
         self.publish_channel = publish_channel
         self.client = client
@@ -133,7 +136,7 @@ class DiscordVoiceInput:
         numpy_array = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32)
 
         # transcribe speech
-        transcribed_speech = transcribeSpeech(numpy_array, self.inputGain)
+        transcribed_speech = self.transcriber.transcribeSpeech(numpy_array, self.inputGain)
 
         if transcribed_speech == "" or transcribed_speech == None:
             return
