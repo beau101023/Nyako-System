@@ -22,16 +22,9 @@ class DiscordVoiceInput:
     speechBufferByUser : Dict[str, list[AudioSegment]]
     noSpeechTimeByUser : Dict[str, float]
     inputGain : float
+    event_bus : EventBus
 
     def __init__(self):
-        pass
-
-    @classmethod
-    async def create(cls, event_bus: EventBus, client: discord.Client, publish_channel=Topics.Pipeline.USER_INPUT):
-        self = DiscordVoiceInput()
-        self.event_bus = event_bus
-        self.publish_channel = publish_channel
-        self.client = client
         self.voice_client: discord.VoiceClient = None
         self.stream_sink: StreamSink = StreamSink()
 
@@ -41,6 +34,13 @@ class DiscordVoiceInput:
         self.inputGain = 1.0
 
         self.stopped = False
+
+    @classmethod
+    async def create(cls, event_bus: EventBus, client: discord.Client, publish_channel=Topics.Pipeline.USER_INPUT):
+        self = DiscordVoiceInput()
+        self.event_bus = event_bus
+        self.publish_channel = publish_channel
+        self.client = client
 
         # register event handlers
         client.event(self.on_ready)
