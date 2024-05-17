@@ -8,9 +8,6 @@ import threading
 
 from params import advanced_voice_enabled
 
-model, _ = torch.hub.load('snakers4/silero-models', 'silero_tts', language=language, speaker=model_id)
-model.to(device)
-
 class TextToSpeechOutput:
     event_bus: EventBus
 
