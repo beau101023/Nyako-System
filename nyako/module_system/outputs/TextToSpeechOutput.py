@@ -8,13 +8,14 @@ from params import advanced_voice_enabled
 class TextToSpeechOutput:
     event_bus: EventBus
 
+    def __init__(self):
+        # the tag to register with the message router
+        self.tag = "voice"
+        self.volume: float = 1.0
+
     @classmethod
     async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
         self = TextToSpeechOutput()
-
-        # init
-        self.tag = "voice"
-        self.volume: float = 1.0
         self.event_bus = event_bus
 
         # subscribe to events
