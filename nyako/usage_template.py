@@ -1,7 +1,7 @@
 import torch
 torch.set_num_threads(3)
 
-import nyako_stt
+import Transcribers
 
 import asyncio
 
@@ -9,7 +9,7 @@ import module_system
 
 ### NOTE: You need to run VSCode as administrator for this specific import to work due to stupid shit with TextToSpeechOutput's innerworkings
 ###     as such, it's not imported by default when you import module_system
-# from module_system.outputs import TextToSpeechOutput
+from module_system.outputs.TextToSpeechOutput import TextToSpeechOutput
 
 from AdminEvents import AdminEvents
 from TaskManager import TaskManager
@@ -36,7 +36,7 @@ async def main():
     #sleep_manager = await SleepManager.create(event_bus)
 
     ## Control panel ui
-    #admin_events = await AdminEvents.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    admin_events = await AdminEvents.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
     
     # endregion
 
@@ -46,7 +46,7 @@ async def main():
     ## Joins the first voice channel available to the discord client
     #discord_voice_input = await DiscordVoiceInput.create(event_bus, discord_client, publish_channel=Topics.Pipeline.USER_INPUT)
     
-    speech_to_text = await module_system.inputs.SpeechToTextInput.create(event_bus, transcriber=nyako_stt.WhisperTranscriber(), publish_channel=Topics.Pipeline.USER_INPUT)
+    speech_to_text = await module_system.inputs.SpeechToTextInput.create(event_bus, transcriber=Transcribers.WhisperTranscriber(no_speech_probability_threshold=1.0), publish_channel=Topics.Pipeline.USER_INPUT)
     #console_input = await ConsoleInput.create(event_bus)
     #discord_input = await DiscordInput.create(event_bus, discord_client, publish_channel=Topics.Pipeline.USER_INPUT)
     
@@ -55,10 +55,10 @@ async def main():
     # region Processing Modules
 
     ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
-    #message_chunker = await RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
+    message_chunker = await module_system.processors.RealtimeMessageChunker.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT, send_topic=Topics.Pipeline.CHUNKER)
     
     ## The conversation session processor queries the LLM
-    #conversation_session_processor = await ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    conversation_session_processor = await module_system.processors.ConversationSessionProcessor.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
     
     ## The message router sends the results to the output modules based on a tagging system
     ## For example, if the LLM produces an output with the string "[voice]", the message router will send the text after that tag to the voice output module
@@ -68,12 +68,13 @@ async def main():
 
     # region Output Modules
 
-    #console_output = await ConsoleOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
-    #speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Router.VOICE)
+    console_output = await module_system.outputs.ConsoleOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
+    speech_output = await TextToSpeechOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY)
 
-    user_input_monitor = await module_system.outputs.ConsoleOutput.create(event_bus, listen_topic=Topics.Pipeline.USER_INPUT)
+    user_input_monitor = await module_system.outputs.ConsoleOutput.create(event_bus, listen_topic=Topics.Pipeline.CHUNKER)
 
-    #visual_output = await module_system.outputs.VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
+
+    visual_output = await module_system.outputs.VisualOutput.create(event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=admin_events.window)
 
     #discord_output = await DiscordOutput.create(event_bus, discord_client, listen_topic=Topics.Router.DISCORD)
 
