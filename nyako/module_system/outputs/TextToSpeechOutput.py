@@ -1,14 +1,14 @@
-import nyako_tts
+import nyako.TTS as TTS
 from EventTopics import Topics
 from EventBus import EventBus
 import threading
 
-from nyako_tts import TextToSpeech
+from nyako.TTS import TextToSpeech
 
 from audio_playback import Audio_Player
 from audio_playback import PyAudioPlayer
 
-from nyako_tts import SileroRVC_TTS
+from nyako.TTS import SileroRVC_TTS
 
 
 class TextToSpeechOutput:
@@ -57,7 +57,7 @@ class TextToSpeechOutput:
         self.audio_player.play_audio(audio)
 
     def onWarmup(self):
-        nyako_tts.warmup()
+        TTS.warmup()
 
     async def publishSpeakingStart(self):
         update = Topics.SpeakingStateUpdate(starting=True)
