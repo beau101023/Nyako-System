@@ -2,7 +2,7 @@ from EventBus import EventBus
 from EventTopics import Topics
 import asyncio
 
-import Command as Command
+from module_system.outputs.command_output.Command import Command
 
 class CommandOutput():
 
