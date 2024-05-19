@@ -72,7 +72,7 @@ class MessageRouter():
             await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[" + tag + "] " + text)
 
     async def all_outputs_send(self, text: str):
-        # send to every topic in router.outputs except the one specified in the tag
+        # send to every topic in router.outputs
         for output in [output for output in dir(Topics.Router.Outputs) if not output.startswith('__')]:
             await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[untagged] " + text)
 
