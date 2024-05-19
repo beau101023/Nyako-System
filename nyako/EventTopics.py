@@ -43,7 +43,7 @@ class Topics:
         output_active: bool
 
     class Discord:
-        LISTENING_CHANNEL_SET = 'discord_listening_channel_set'
+        VOICE_CHANNEL_SET = 'discord_listening_channel_set'
 
     class Audio:
         INPUT_VOLUME_UPDATE = 'audio_input_volume_update'
