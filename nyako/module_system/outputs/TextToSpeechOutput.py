@@ -3,10 +3,18 @@ from EventTopics import Topics
 from EventBus import EventBus
 import threading
 
-from params import advanced_voice_enabled
+from nyako_tts import TextToSpeech
+
+from audio_playback import Audio_Player
+from audio_playback import PyAudioPlayer
+
+from nyako_tts import SileroRVC_TTS
+
 
 class TextToSpeechOutput:
     event_bus: EventBus
+    speech_to_text: TextToSpeech
+    audio_player: Audio_Player
 
     def __init__(self):
         # the tag to register with the message router
@@ -14,9 +22,12 @@ class TextToSpeechOutput:
         self.volume: float = 1.0
 
     @classmethod
-    async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
+    async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
         self = TextToSpeechOutput()
         self.event_bus = event_bus
+
+        self.speech_to_text = speech_to_text
+        self.audio_player = audio_player
 
         # subscribe to events
         self.event_bus.subscribe(self.onWarmup, Topics.System.WARMUP)
@@ -42,13 +53,8 @@ class TextToSpeechOutput:
         self.volume = event.volume
 
     def say(self, text):
-        if(advanced_voice_enabled):
-            nyako_tts.sayWithRVC(text, volume=self.volume)
-            return
-        else:
-            nyako_tts.say(text, volume=self.volume)
-            return
-        
+        audio = self.speech_to_text.generate_speech(text)
+        self.audio_player.play_audio(audio)
 
     def onWarmup(self):
         nyako_tts.warmup()
