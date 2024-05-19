@@ -1,6 +1,6 @@
 import asyncio
 import pyaudio
-import nyako_stt
+import Transcribers
 from nyako_vad import detectVoiceActivity
 from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
@@ -10,12 +10,12 @@ from EventTopics import Topics
 
 class SpeechToTextInput:
     asyncio_main_loop: AbstractEventLoop
-    transcriber: nyako_stt.Transcriber
+    transcriber: Transcribers.Transcriber
 
     @classmethod
     async def create(
         cls, event_bus,
-        transcriber: nyako_stt.Transcriber=nyako_stt.WhisperTranscriber(),
+        transcriber: Transcribers.Transcriber=Transcribers.WhisperTranscriber(),
         publish_channel=Topics.Pipeline.USER_INPUT
         ):
         """

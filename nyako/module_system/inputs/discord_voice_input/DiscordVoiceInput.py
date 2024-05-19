@@ -6,8 +6,8 @@ from module_system.inputs.discord_voice_input.StreamSink import StreamSink
 import torch
 
 from nyako_vad import detectVoiceActivity
-from nyako_stt import Transcriber
-from nyako_stt import WhisperTranscriber
+from nyako.Transcribers import Transcriber
+from nyako.Transcribers import WhisperTranscriber
 
 from typing import Dict
 from pydub import AudioSegment
