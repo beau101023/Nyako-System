@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
+
 import torch
-from audio_playback import playAudio
 
 from rvc_pipe.rvc_infer import rvc_convert
 
@@ -12,59 +13,76 @@ from params import sample_rate_out, language, model_id, speaker, device
 model, _ = torch.hub.load('snakers4/silero-models', 'silero_tts', language=language, speaker=model_id)
 model.to(device)
 
-# text to raw audio
-def say(text, volume=1.0):
+class TextToSpeech(ABC):
+    @abstractmethod
+    def generate_speech(self, text):
+        """
+        Generate speech from text input.
 
-    start_time = timeit.default_timer()
-    try:
-        audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
-    except Exception as e:
-        print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
-        return
+        Parameters:
+        text (str): the text to generate speech from
+        """
+
+class SileroTTS(TextToSpeech):
+    def __init__(self, speaker=speaker, sample_rate=sample_rate_out):
+        self.speaker = speaker
+        self.sample_rate = sample_rate
+
+    def generate_speech(self, text):
+        start_time = timeit.default_timer()
+        try:
+            audio_tensor = model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
+        except Exception as e:
+            print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
+            return
+        
+        print("model 1 inference time: " + str(timeit.default_timer() - start_time))
+
+        return audio_tensor
     
-    print("model 1 inference time: " + str(timeit.default_timer() - start_time))
+class SileroRVC_TTS(TextToSpeech):
+    def __init__(self, speaker=speaker, sample_rate=sample_rate_out, pitch_shift_semitones=4):
+        self.speaker = speaker
+        self.sample_rate = sample_rate
+        self.pitch_shift_semitones = pitch_shift_semitones
 
-    playAudio(audio_tensor, volume=volume)
+    def generate_speech(self, text):
+        start_time = timeit.default_timer()
+        try:
+            audio_tensor = model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
+        except Exception as e:
+            print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
+            return
+        
+        print("model 1 inference time: " + str(timeit.default_timer() - start_time))
 
-def sayWithRVC(text, volume=1.0):
+        # normalize
+        audio_np = audio_tensor.numpy()
+        audio_np = audio_np / audio_np.max()
 
-    start_time = timeit.default_timer()
-    try:
-        audio_tensor = model.apply_tts(text, speaker=speaker, sample_rate=sample_rate_out)
-    except Exception as e:
-        print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
-        return
-    
-    print("model 1 inference time: " + str(timeit.default_timer() - start_time))
+        start_time = timeit.default_timer()
 
-    # normalize
-    audio_np = audio_tensor.numpy()
-    audio_np = audio_np / audio_np.max()
+        # bounce to wav
+        with sf.SoundFile(FileIO('nyako/inference_temp/voice.wav', 'wb'), mode='w', samplerate=self.sample_rate, channels=1, format='wav', subtype='FLOAT') as f:
+            f.write(audio_np)
+        
+        print("model 1 wav write time: " + str(timeit.default_timer() - start_time))
 
-    start_time = timeit.default_timer()
+        start_time = timeit.default_timer()
 
-    # bounce to wav
-    with sf.SoundFile(FileIO('nyako/inference_temp/voice.wav', 'wb'), mode='w', samplerate=48000, channels=1, format='wav', subtype='FLOAT') as f:
-        f.write(audio_np)
-    
-    print("model 1 wav write time: " + str(timeit.default_timer() - start_time))
+        # convert with rvc
+        rvc_convert(f0_up_key=4, model_path='nyako/rvc_voice_models/ayaka-jp_e101.pth', input_path='nyako/inference_temp/voice.wav', output_dir_path='nyako/inference_temp/voice_conv.wav')
+        
+        print("model 2 inference time: " + str(timeit.default_timer() - start_time))
 
-    start_time = timeit.default_timer()
+        start_time = timeit.default_timer()
 
-    # convert with rvc
-    rvc_convert(f0_up_key=4, model_path='nyako/rvc_voice_models/ayaka-jp_e101.pth', input_path='nyako/inference_temp/voice.wav', output_dir_path='nyako/inference_temp/voice_conv.wav')
-    
-    print("model 2 inference time: " + str(timeit.default_timer() - start_time))
+        with sf.SoundFile('nyako/inference_temp/voice_conv.wav', mode='r') as f:
+            audio = f.read(dtype='float32')
 
-    start_time = timeit.default_timer()
+        print("model 2 wav read time: " + str(timeit.default_timer() - start_time))
 
-    with sf.SoundFile('nyako/inference_temp/voice_conv.wav', mode='r') as f:
-        audio = f.read(dtype='float32')
-
-    print("model 2 wav read time: " + str(timeit.default_timer() - start_time))
-
-    print("playing audio")
-    playAudio(audio, volume=volume)
+        return audio
 
 # torch optimizer warmup
 def warmup():
