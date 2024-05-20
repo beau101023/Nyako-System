@@ -1,16 +1,18 @@
 import asyncio
-from EventTopics import Topics
+from Events import Events
 from EventBus import EventBus
+from EventBusSingleton import EventBusSingleton
 
 class TaskManager:
     event_bus: EventBus
 
-    def __init__(self, event_bus):
-        self.event_bus = event_bus
+    def __init__(self):
         self.tasks = []
-        self.event_bus.subscribe(self.onTaskCreated, Topics.System.TASK_CREATED)
+        EventBusSingleton.get().subscribe(self.onTaskCreated, Events.System.TaskCreated)
 
-    def onTaskCreated(self, task):
+    def onTaskCreated(self, event: Events.System.TaskCreated):
+        task = event.task
+        
         print("Task registered for " + str(task))
         self.tasks.append(task)
 
