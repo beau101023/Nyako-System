@@ -2,12 +2,12 @@ from abc import ABC, abstractmethod
 
 import pyaudio
 import numpy as np
-import torch
+from torch import Tensor
 
 import threading
 
 class Audio_Player(ABC):
-    def play_audio(self, input_data):
+    def play_audio(self, input_data: Tensor|np.ndarray|bytes) -> None:
         """
         Play audio from input data.
 
@@ -23,18 +23,18 @@ class PyAudioPlayer(Audio_Player):
     def set_volume(self, volume: float) -> None:
         self.volume = volume
 
-    def play_audio(self, input_data):
+    def play_audio(self, input_data: Tensor|np.ndarray|bytes) -> None:
         audio_bytes = self.audioToBytes(input_data)
 
         # Create a new thread for playing the audio
-        thread = threading.Thread(target=self.playAudioThread, args=(audio_bytes,))
+        thread = threading.Thread(target=self.playAudioInNewThread, args=(audio_bytes,))
         thread.start()
 
-    def audioToBytes(self, input_data, volume=1.0):
+    def audioToBytes(self, input_data: Tensor|np.ndarray|bytes, volume: float = 1.0) -> bytes:
         # Check the type of the input data
-        if isinstance(input_data, torch.Tensor):
+        if isinstance(input_data, Tensor):
             # If it's a tensor, convert it to a numpy array
-            audio_np = input_data.numpy()
+            audio_np: np.ndarray = input_data.numpy()
         elif isinstance(input_data, np.ndarray):
             # If it's a numpy array, use it directly
             audio_np = input_data
@@ -55,7 +55,14 @@ class PyAudioPlayer(Audio_Player):
 
         return audio_bytes
 
-    def playAudioThread(self, audio_bytes):
+    def playAudioInNewThread(self, audio_bytes: bytes):
+        """
+        Spins off a new thread and plays a given audio byte array.
+
+        Parameters:
+        audio_bytes (bytes): the audio to play
+        """
+
         # Play audio bytes
         stream = self.audio_sys.open(format=pyaudio.paFloat32,
                                         channels=1,
