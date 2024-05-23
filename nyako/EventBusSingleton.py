@@ -18,19 +18,17 @@ class EventBusSingleton(EventBus):
         return cls._instance
 
     @staticmethod
-    def get():
+    def get() -> EventBus:
         """
-        Returns the singleton instance of the EventBusSingleton.
+        Returns the singleton instance of the EventBus.
         
         Returns:
-            EventBusSingleton: The singleton instance of the EventBusSingleton.
+            EventBus: The singleton instance of the EventBus.
         """
-        if EventBusSingleton._instance is None:
-            EventBusSingleton._instance = EventBusSingleton()
-        return EventBusSingleton._instance
+        return EventBusSingleton()
     
     @staticmethod
-    def subscribe(event: Any, handler: Callable[[Any], None]):
+    def subscribe(event: Any, handler: Callable[[Any], None]) -> None:
         """
         Subscribes a handler to a specific event type with optional filtering based on event fields.
         
@@ -46,7 +44,7 @@ class EventBusSingleton(EventBus):
         EventBusSingleton.get().subscribe(event, handler)
 
     @staticmethod
-    def unsubscribe(event: Any, handler: Callable[[Any], None]):
+    def unsubscribe(event: Any, handler: Callable[[Any], None]) -> None:
         """
         Unsubscribes a handler from a specific event type.
         
@@ -58,11 +56,11 @@ class EventBusSingleton(EventBus):
         EventBusSingleton.get().unsubscribe(event, handler)
 
     @staticmethod
-    def publish(event: Any):
+    async def publish(event: Any) -> None:
         """
         Publishes an event to all subscribers.
         
         Args:
             event (Any): An instance of a dataclass representing the event to publish.
         """
-        EventBusSingleton.get().publish(event)
+        await EventBusSingleton.get().publish(event)
