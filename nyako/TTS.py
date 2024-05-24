@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
+from io import FileIO
 
 import torch
+import timeit
+import soundfile as sf
 
 from rvc_pipe.rvc_infer import rvc_convert
 
-import soundfile as sf
-from io import FileIO
-import timeit
+from audio_playback import audioToBytes
 
 from params import sample_rate_out, language, model_id, speaker, device
 
@@ -15,7 +16,7 @@ model.to(device)
 
 class TextToSpeech(ABC):
     @abstractmethod
-    def generate_speech(self, text):
+    def generate_speech(self, text: str) -> bytes:
         """
         Generate speech from text input.
 
@@ -28,7 +29,7 @@ class SileroTTS(TextToSpeech):
         self.speaker = speaker
         self.sample_rate = sample_rate
 
-    def generate_speech(self, text):
+    def generate_speech(self, text: str) -> bytes:
         start_time = timeit.default_timer()
         try:
             audio_tensor = model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
@@ -38,7 +39,7 @@ class SileroTTS(TextToSpeech):
         
         print("model 1 inference time: " + str(timeit.default_timer() - start_time))
 
-        return audio_tensor
+        return audioToBytes(audio_tensor)
     
 class SileroRVC_TTS(TextToSpeech):
     def __init__(self, speaker=speaker, sample_rate=sample_rate_out, pitch_shift_semitones=4):
@@ -46,7 +47,7 @@ class SileroRVC_TTS(TextToSpeech):
         self.sample_rate = sample_rate
         self.pitch_shift_semitones = pitch_shift_semitones
 
-    def generate_speech(self, text):
+    def generate_speech(self, text: str) -> bytes:
         start_time = timeit.default_timer()
         try:
             audio_tensor = model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
@@ -82,7 +83,7 @@ class SileroRVC_TTS(TextToSpeech):
 
         print("model 2 wav read time: " + str(timeit.default_timer() - start_time))
 
-        return audio
+        return audioToBytes(audio)
 
 # torch optimizer warmup
 def warmup():
