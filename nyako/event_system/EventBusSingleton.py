@@ -1,4 +1,4 @@
-from EventBus import EventBus
+from nyako.event_system.EventBus import EventBus
 
 from typing import Any, Callable
 
@@ -9,7 +9,7 @@ class EventBusSingleton(EventBus):
     This class ensures that only one instance of EventBus exists and provides
     a static method to access that instance.
     """
-    _instance = None
+    _instance: EventBus = None
 
     def __new__(cls):
         if cls._instance is None:
