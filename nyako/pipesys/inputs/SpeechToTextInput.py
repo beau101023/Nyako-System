@@ -1,23 +1,25 @@
 import asyncio
 import pyaudio
-import Transcribers
+from Transcribers import Transcriber, WhisperTranscriber
 from nyako_vad import detectVoiceActivity
 from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
+from EventBus import EventBus
+
 from asyncio import AbstractEventLoop
 
-from EventTopics import Topics
+from nyako.events.IO import SystemInputType, UserInputEvent
+from events.System import CommandEvent, CommandType, TaskCreatedEvent
+from events.Audio import VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
 
 class SpeechToTextInput:
     asyncio_main_loop: AbstractEventLoop
-    transcriber: Transcribers.Transcriber
+    transcriber: Transcriber
+    event_bus: EventBus
+    audio: pyaudio.PyAudio
 
     @classmethod
-    async def create(
-        cls, event_bus,
-        transcriber: Transcribers.Transcriber=Transcribers.WhisperTranscriber(),
-        publish_channel=Topics.Pipeline.USER_INPUT
-        ):
+    async def create(cls, event_bus: EventBus, transcriber: Transcriber= WhisperTranscriber()):
         """
         Creates an instance of the SpeechToTextInput module.
 
@@ -35,21 +37,18 @@ class SpeechToTextInput:
         self.transcriber = transcriber
 
         self.event_bus = event_bus
-        self.event_bus.subscribe(self.stop, Topics.System.STOP)
-        self.event_bus.subscribe(self.onSpeakingStateUpdate, Topics.TTS.SPEAKING_STATE)
-        self.event_bus.subscribe(self.onInputVolumeUpdate, Topics.Audio.INPUT_VOLUME_UPDATE)
+        self.event_bus.subscribe(CommandEvent(CommandType.STOP), self.stop)
+        self.event_bus.subscribe(VolumeUpdatedEvent(None, AudioType.SYSTEM_IN), self.onInputVolumeUpdate)
 
-        self.publish_to = publish_channel
-
-        self.audio: pyaudio.PyAudio = pyaudio.PyAudio()
+        self.audio = pyaudio.PyAudio()
         self.noSpeechTime = 0
         self.speechRecordingTriggered = False
         self.speechBuffer = bytes()
         self.input_gain = 1.0
         self.stopped = False
 
-        self.task = asyncio.create_task(self.run())
-        await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+        task = asyncio.create_task(self.run())
+        await self.event_bus.publish(TaskCreatedEvent(task))
         return self
         
     def stop(self):
@@ -62,14 +61,8 @@ class SpeechToTextInput:
         self.stream = self.audio.open(rate=INPUT_SAMPLING_RATE, channels=1, input=True, format=pyaudio.paFloat32, frames_per_buffer=FramesPerBuffer, stream_callback=self.microphoneInputCallback)
         while not self.stopped:
             await asyncio.sleep(0.1)
-    
-    async def onSpeakingStateUpdate(self, event: Topics.SpeakingStateUpdate):
-        if event.starting:
-            await self.mute()
-        elif event.ending:
-            await self.unmute()
 
-    async def onInputVolumeUpdate(self, event: Topics.VolumeUpdate):
+    async def onInputVolumeUpdate(self, event: VolumeUpdatedEvent):
         self.input_gain = event.volume
 
     async def mute(self):
@@ -86,7 +79,7 @@ class SpeechToTextInput:
 
             # raise user speaking state update event
             asyncio.run_coroutine_threadsafe(
-                self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(starting=True)),
+                self.event_bus.publish(SpeakingStateUpdate(True, AudioType.SYSTEM_IN)),
                 self.asyncio_main_loop)
 
         if self.speechRecordingTriggered:
@@ -110,7 +103,7 @@ class SpeechToTextInput:
 
                 # raise user speaking state update event
                 asyncio.run_coroutine_threadsafe(
-                    self.event_bus.publish(Topics.SpeechToText.USER_SPEAKING_STATE, Topics.SpeakingStateUpdate(ending=True)),
+                    self.event_bus.publish(SpeakingStateUpdate(False, AudioType.SYSTEM_IN)),
                     self.asyncio_main_loop)
 
                 # debug
@@ -126,7 +119,7 @@ class SpeechToTextInput:
 
                 # send transcript to next modules
                 asyncio.run_coroutine_threadsafe(
-                    self.event_bus.publish(self.publish_to, "[voice] beau: " + transcript),
+                    self.event_bus.publish(UserInputEvent(transcript, SystemInputType.VOICE)),
                     self.asyncio_main_loop)
         else:
             self.noSpeechTime = 0

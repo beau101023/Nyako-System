@@ -19,8 +19,9 @@ class StreamSink(Sink):
         self.audio_data = {}
 
         # obj to store our super sweet awesome audio data
-        self.buffer = StreamBuffer()
+        self.buffer = MultiStreamBuffer()
 
+    # aforementioned callback
     def write(self, data, user):
         # we overload the write method to take advantage of the already running thread for recording
         self.buffer.write(data=data, user=user)
@@ -30,13 +31,13 @@ class StreamSink(Sink):
 
     def get_all_audio(self):
         # not applicable for streaming but may cause errors if not overloaded
-        pass
+        raise NotImplementedError
 
     def get_user_audio(self, user):
-        # not applicable for streaming but will def cause errors if not overloaded called
-        pass
+        # not applicable for streaming but will def cause errors if not overloaded
+        raise NotImplementedError
 
-    def set_voice_client(self, vc: VoiceClient):
+    def set_voice_client(self, vc: VoiceClient) -> None:
         self.vc = vc
         self.buffer.bytes_ps = vc.channel.bitrate
 
@@ -44,34 +45,13 @@ class StreamSink(Sink):
         self.buffer.remove_user(user)
 
     def has_data(self) -> bool:
-        audio_buffer = self.buffer.segment_buffer
-        if audio_buffer == {}:
-            return False
-        
-        # if any of the queues aren't empty, return true
-        has_data = [not audio_buffer[user].empty() for user in audio_buffer].count(True) > 0
-        return has_data
+        return self.buffer.has_data()
     
     def pop_data(self) -> tuple[str, AudioSegment]:
-
-        audio_buffer = self.buffer.segment_buffer
-
-        assert isinstance(audio_buffer, dict)
-
-        if audio_buffer == {}:
-            return None, None
-
-        # getting the first user with data in their queue
-        user = [user for user in audio_buffer if not audio_buffer[user].empty()][0]
-
-        # getting the first audio segment from the user's queue
-        audio_segment = audio_buffer[user].get()
-
-        # returning the user id and audio segment
-        return user, audio_segment
+        return self.buffer.pop_data()
 
 
-class StreamBuffer:
+class MultiStreamBuffer:
     def __init__(self) -> None:
         # holds byte-form audio data as it builds
         self.byte_buffer: Dict[str, bytearray] = {}  # bytes
@@ -127,10 +107,18 @@ class StreamBuffer:
                 # if the queue is full, we'll consume a segment ourselves and then insert the new one
                 #  we consume and insert rather than dropping the new segment because we want to
                 #  ensure we aren't reacting to audio that is too old
-                self.segment_buffer[user].get()
+                _ = self.segment_buffer[user].get()
                 self.segment_buffer[user].put(audio_segment, timeout=0.05)
-                pass
     
     def remove_user(self, user) -> None:
         if user in self.segment_buffer:
             del self.segment_buffer[user]
+
+    def has_data(self) -> bool:
+        return any(not queue.qsize() == 0 for queue in self.segment_buffer.values())
+    
+    def pop_data(self):
+        for user, queue in self.segment_buffer.items():
+            if not queue.empty():
+                return user, queue.get()
+        return None, None

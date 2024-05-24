@@ -1,7 +1,7 @@
 from LLM.nyako_llm import ConversationSession
 import params
-from EventTopics import Topics
 from EventBus import EventBus
+from events.Event import Event
 
 class ConversationSessionProcessor:
     conversation_session: ConversationSession
@@ -9,7 +9,7 @@ class ConversationSessionProcessor:
     event_bus: EventBus
 
     @classmethod
-    async def create(cls, event_bus, listen_topic=Topics.Pipeline.CHUNKER, send_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
+    async def create(cls, event_bus, listen_to: Event):
         self = ConversationSessionProcessor()
         self.event_bus = event_bus
         self.event_bus.subscribe(self.onOutputStateUpdate, Topics.System.OUTPUT_STATE)
