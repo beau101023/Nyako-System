@@ -24,36 +24,11 @@ class PyAudioPlayer(Audio_Player):
         self.volume = volume
 
     def play_audio(self, input_data: Tensor|np.ndarray|bytes) -> None:
-        audio_bytes = self.audioToBytes(input_data)
+        audio_bytes = audioToBytes(input_data)
 
         # Create a new thread for playing the audio
         thread = threading.Thread(target=self.playAudioInNewThread, args=(audio_bytes,))
         thread.start()
-
-    def audioToBytes(self, input_data: Tensor|np.ndarray|bytes, volume: float = 1.0) -> bytes:
-        # Check the type of the input data
-        if isinstance(input_data, Tensor):
-            # If it's a tensor, convert it to a numpy array
-            audio_np: np.ndarray = input_data.numpy()
-        elif isinstance(input_data, np.ndarray):
-            # If it's a numpy array, use it directly
-            audio_np = input_data
-        elif isinstance(input_data, bytes):
-            # If it's bytes, convert it to a numpy array
-            audio_np = np.frombuffer(input_data, dtype=np.float32)
-        else:
-            raise TypeError(f"Input must be a tensor, numpy array, or bytes. Type is {type(input_data)}")
-
-        # Normalize audio
-        audio_np = audio_np / np.max(audio_np)
-
-        # Apply volume
-        audio_np = audio_np * volume
-
-        # Convert numpy array to bytes
-        audio_bytes = audio_np.tobytes()
-
-        return audio_bytes
 
     def playAudioInNewThread(self, audio_bytes: bytes):
         """
@@ -71,3 +46,28 @@ class PyAudioPlayer(Audio_Player):
 
         stream.write(audio_bytes)
         stream.close()
+
+def audioToBytes(input_data: Tensor|np.ndarray|bytes, volume: float = 1.0) -> bytes:
+    # Check the type of the input data
+    if isinstance(input_data, Tensor):
+        # If it's a tensor, convert it to a numpy array
+        audio_np: np.ndarray = input_data.numpy()
+    elif isinstance(input_data, np.ndarray):
+        # If it's a numpy array, use it directly
+        audio_np = input_data
+    elif isinstance(input_data, bytes):
+        # If it's bytes, convert it to a numpy array
+        audio_np = np.frombuffer(input_data, dtype=np.float32)
+    else:
+        raise TypeError(f"Input must be a tensor, numpy array, or bytes. Type is {type(input_data)}")
+
+    # Normalize audio
+    audio_np = audio_np / np.max(audio_np)
+
+    # Apply volume
+    audio_np = audio_np * volume
+
+    # Convert numpy array to bytes
+    audio_bytes = audio_np.tobytes()
+
+    return audio_bytes
