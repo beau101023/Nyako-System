@@ -1,6 +1,8 @@
 import asyncio
-from dataclasses import fields, is_dataclass
-from typing import Callable, Dict, List, Type, Any
+from dataclasses import fields
+from typing import Callable, Dict, List, Type, Any, Tuple
+
+from event_system.Event import Event
 
 class EventBus:
     """
@@ -12,23 +14,33 @@ class EventBus:
     """
 
     def __init__(self):
-        self._subscribers: Dict[Type, List[Callable[[Any], bool]]] = {}
+        """
+        Init function.
 
-    def subscribe(self, event: Any, handler: Callable[[Any], None]):
+        Private fields:
+        _subscribers (Dict[Type, List[Tuple[Callable[[Event], None], Callable[[Event], bool]]]):
+            A dictionary that maps an event type to pairs of subscriber handlers and filter functions.
+            These represent the handlers that are subscribed to the event type and the filter functions
+            used to determine if an event should be passed to the handler.
+        """
+        self._subscribers: Dict[Type, List[Tuple[Callable[[Event], None], Callable[[Event], bool]]]] = {}
+
+    def subscribe(self, event: Event|Type[Event], handler: Callable[[Event], None]):
         """
         Subscribes a handler to a specific event type with optional filtering based on event fields.
         
         Args:
-            event (Any): An instance of a dataclass or a dataclass type representing the event type to subscribe to.
-                         In the case of an instance, the instance fields are used for filtering events.
-            handler (Callable[[Any], None]): A callable that handles the event. It must accept a single
-                                             argument, which is the event instance.
+            event: Either an Event instance or Type[Event] representing the event type to subscribe to.
+                   In the case of an instance, the instance fields are used for filtering events.
+            handler: A callable that handles the event. It must accept a single
+                     argument, which is the event instance.
         
         Raises:
-            TypeError: If filter_event is not a dataclass instance or type.
+            TypeError: If event is not an instance of Event or a type inheriting from Event.
         """
-        if not (is_dataclass(event) or (isinstance(event, type) and is_dataclass(event))):
-            raise TypeError("filter_event must be a dataclass instance or dataclass type")
+
+        if not isinstance(event, Event) and not (isinstance(event, type) and issubclass(event, Event)):
+            raise TypeError("The 'event' parameter must be an instance of an Event or a type inheriting from Event.")
         
         event_class = event if isinstance(event, type) else type(event)
         if event_class not in self._subscribers:
@@ -36,7 +48,7 @@ class EventBus:
         filter_func = self._create_filter_func(event) if not isinstance(event, type) else lambda _: True
         self._subscribers[event_class].append((handler, filter_func))
 
-    def unsubscribe(self, event: Any, handler: Callable[[Any], None]):
+    def unsubscribe(self, event: Event|Type[Event], handler: Callable[[Event], None]):
         """
         Unsubscribes a handler from a specific event type.
         
@@ -53,9 +65,11 @@ class EventBus:
                 (h, f) for h, f in self._subscribers[event_class] if h != handler
             ]
 
-    def _create_filter_func(self, filter_event: Any) -> Callable[[Any], bool]:
+    def _create_filter_func(self, filter: Event|Type[Event]) -> Callable[[Event], bool]:
         """
-        Creates a filter function for an event based on the provided filter_event dataclass instance.
+        Creates a filter function for an event based on the provided event instance or type.
+
+        This filter function 
         
         Args:
             filter_event (Any): An instance of a dataclass with fields used for filtering events.
@@ -64,12 +78,17 @@ class EventBus:
             Callable[[Any], bool]: A function that takes an event and returns True if the event
                                    matches the filter criteria, otherwise False.
         """
-        def filter_func(event: Any) -> bool:
-            return all(getattr(event, field.name) == getattr(filter_event, field.name)
-                       for field in fields(filter_event) if getattr(filter_event, field.name) is not None)
+        def filter_func(event: Event) -> bool:
+            return all(
+                # if an event is passed like Event(arg=AType), filter should allow all events with `arg` of that type
+                ( field.type == Type and isinstance(getattr(event, field.name), field.type) ) 
+                # if an event is passed like Event(arg=1), filter should allow all events with `arg` of that value
+                # alternatively, if the filter event has a 'None' argument, the filter will ignore that argument for filtering
+                or getattr(event, field.name) == getattr(filter, field.name)
+                    for field in fields(filter) if getattr(filter, field.name) is not None)
         return filter_func
 
-    async def publish(self, event: Any):
+    async def publish(self, event: Event):
         """
         Publishes an event to all subscribed handlers that match the event's type and filter criteria.
         
