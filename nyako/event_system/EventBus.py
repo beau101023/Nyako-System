@@ -1,8 +1,11 @@
 import asyncio
-from dataclasses import fields
-from typing import Callable, Dict, List, Type, Any, Tuple
+from typing import Callable, Coroutine, Dict, List, Type, Any, Tuple, Union, TypeVar
 
-from event_system.Event import Event
+from event_system import Event
+
+AnyEvent = TypeVar('AnyEvent', bound=Event)
+
+EventHandler = Union[Callable[[AnyEvent], None],Callable[[AnyEvent], Coroutine[Any,Any,None]]]
 
 class EventBus:
     """
@@ -12,6 +15,9 @@ class EventBus:
     notify all relevant subscribers. The EventBus supports filtering of events based on
     dataclass field values.
     """
+    EventFilter = Callable[[AnyEvent], bool]
+    Subscriber = Tuple[EventHandler, EventFilter]
+    EventSubscriptions = Dict[Type[AnyEvent], List[Subscriber]]
 
     def __init__(self):
         """
@@ -23,9 +29,10 @@ class EventBus:
             These represent the handlers that are subscribed to the event type and the filter functions
             used to determine if an event should be passed to the handler.
         """
-        self._subscribers: Dict[Type, List[Tuple[Callable[[Event], None], Callable[[Event], bool]]]] = {}
 
-    def subscribe(self, event: Event|Type[Event], handler: Callable[[Event], None]):
+        self._subscribers: EventBus.EventSubscriptions = {}
+
+    def subscribe(self, event: Event|Type[Event], handler: EventHandler):
         """
         Subscribes a handler to a specific event type with optional filtering based on event fields.
         
@@ -48,7 +55,7 @@ class EventBus:
         filter_func = self._create_filter_func(event) if not isinstance(event, type) else lambda _: True
         self._subscribers[event_class].append((handler, filter_func))
 
-    def unsubscribe(self, event: Event|Type[Event], handler: Callable[[Event], None]):
+    def unsubscribe(self, event: Event|Type[Event], handler: EventHandler):
         """
         Unsubscribes a handler from a specific event type.
         
@@ -65,7 +72,7 @@ class EventBus:
                 (h, f) for h, f in self._subscribers[event_class] if h != handler
             ]
 
-    def _create_filter_func(self, filter: Event|Type[Event]) -> Callable[[Event], bool]:
+    def _create_filter_func(self, filter: Event|Type[Event]) -> EventFilter:
         """
         Creates a filter function for an event based on the provided event instance or type.
 
