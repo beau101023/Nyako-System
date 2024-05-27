@@ -7,6 +7,9 @@ nyako/rvc_voice_models
 nyako/inference_temp
 Machine Learning.code-workspace
 
+# VSCode
+.vscode
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
