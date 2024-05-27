@@ -87,12 +87,14 @@ class EventBus:
         """
         def filter_func(event: Event) -> bool:
             return all(
-                # if an event is passed like Event(arg=AType), filter should allow all events with `arg` of that type
-                ( field.type == Type and isinstance(getattr(event, field.name), field.type) ) 
-                # if an event is passed like Event(arg=1), filter should allow all events with `arg` of that value
-                # alternatively, if the filter event has a 'None' argument, the filter will ignore that argument for filtering
-                or getattr(event, field.name) == getattr(filter, field.name)
-                    for field in fields(filter) if getattr(filter, field.name) is not None)
+                # if an event is passed like Event(arg=None), do not filter on that arg
+                value == None
+                # if an event is passed like Event(arg=AType), allow all events with `arg` of that type
+                or ( isinstance(value, Type) and isinstance(getattr(event, name), type(value)) ) 
+                # if an event is passed like Event(arg=1), allow all events with `arg` of that value
+                or getattr(event, name) == getattr(filter, name)
+                # ... for all variables in the filter event
+                for name, value in vars(filter))
         return filter_func
 
     async def publish(self, event: Event):
