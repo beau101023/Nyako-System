@@ -2,30 +2,31 @@ from nyako.event_system.EventBus import EventBus
 
 from typing import Any, Callable
 
-class EventBusSingleton(EventBus):
+class EventBusSingleton():
     """
     Singleton implementation of the EventBus.
     
     This class ensures that only one instance of EventBus exists and provides
     a static method to access that instance.
     """
-    _instance: EventBus = None
+    _instance: EventBus|None = None
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(EventBusSingleton, cls).__new__(cls)
-            cls._instance.__init__()  # Ensure the singleton is initialized
+            cls._instance = EventBus()
         return cls._instance
 
-    @staticmethod
-    def get() -> EventBus:
+    @classmethod
+    def get(cls) -> EventBus:
         """
         Returns the singleton instance of the EventBus.
         
         Returns:
             EventBus: The singleton instance of the EventBus.
         """
-        return EventBusSingleton()
+        if cls._instance is None:
+            cls._instance = EventBus()
+        return cls._instance
     
     @staticmethod
     def subscribe(event: Any, handler: Callable[[Any], None]) -> None:
