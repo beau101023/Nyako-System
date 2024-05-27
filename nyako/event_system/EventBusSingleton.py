@@ -1,6 +1,7 @@
-from nyako.event_system.EventBus import EventBus
+from typing import Any
 
-from typing import Any, Callable
+from event_system import Event
+from event_system.EventBus import EventHandler, EventBus
 
 class EventBusSingleton():
     """
@@ -29,7 +30,7 @@ class EventBusSingleton():
         return cls._instance
     
     @staticmethod
-    def subscribe(event: Any, handler: Callable[[Any], None]) -> None:
+    def subscribe(event: Event, handler: EventHandler) -> None:
         """
         Subscribes a handler to a specific event type with optional filtering based on event fields.
         
@@ -45,7 +46,7 @@ class EventBusSingleton():
         EventBusSingleton.get().subscribe(event, handler)
 
     @staticmethod
-    def unsubscribe(event: Any, handler: Callable[[Any], None]) -> None:
+    def unsubscribe(event: Event, handler: EventHandler) -> None:
         """
         Unsubscribes a handler from a specific event type.
         
@@ -57,7 +58,7 @@ class EventBusSingleton():
         EventBusSingleton.get().unsubscribe(event, handler)
 
     @staticmethod
-    async def publish(event: Any) -> None:
+    async def publish(event: Event) -> None:
         """
         Publishes an event to all subscribers.
         
