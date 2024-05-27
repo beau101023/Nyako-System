@@ -1,20 +1,24 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from Event import Event
+from event_system import Event
 
 class AudioType(Enum):
-    SYSTEM_IN = 1
-    SYSTEM_OUT = 2
-    DISCORD_OUT = 3
-    DISCORD_IN = 4
+    SYSTEM = 1
+    DISCORD = 2
+
+class AudioDirection(Enum):
+    INPUT = 1
+    OUTPUT = 2
 
 @dataclass
 class VolumeUpdatedEvent(Event):
-    volume: float
-    audio_type: AudioType
+    volume: float | None = None
+    audio_type: AudioType | None = None
+    audio_direction: AudioDirection | None = None
 
 @dataclass
 class SpeakingStateUpdate(Event):
-    isSpeaking: bool
-    audioType: AudioType
+    is_speaking: bool | None = None
+    audio_type: AudioType | None = None
+    audio_direction: AudioDirection | None = None

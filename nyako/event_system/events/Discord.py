@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import discord
 
-from Event import Event
+from event_system import Event
 
 @dataclass
 class VoiceChannelConnectedEvent(Event):

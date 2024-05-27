@@ -2,9 +2,7 @@ from dataclasses import dataclass
 from asyncio import Task
 from enum import Enum
 
-from Event import Event
-
-from nyako.event_system.events.IO import SystemOutputType, SystemInputType
+from event_system import Event
 
 class CommandType(Enum):
     """
@@ -15,6 +13,31 @@ class CommandType(Enum):
     SLEEP = 3
     WAKE = 4
 
+    @staticmethod
+    def fromString(str: str) -> 'CommandType|None':
+        return __command_event_parse_dict.get(str, None)
+    
+    def toString(self) -> str|None:
+        for key, value in __command_event_parse_dict.items():
+            if self == value:
+                return key
+
+        return None
+
+"""
+A dict mapping strings to CommandType enums.
+Meant for parsing commands sent by an LLM.
+Multiple strings map to the same command in case the LLM uses different words to refer to the same command.
+"""
+__command_event_parse_dict = {
+    "stop": CommandType.STOP,
+    "shutdown": CommandType.STOP,
+    "listen": CommandType.LISTEN,
+    "listening": CommandType.LISTEN,
+    "sleep": CommandType.SLEEP,
+    "wake": CommandType.WAKE
+}
+
 @dataclass
 class CommandEvent(Event):
     """
@@ -22,7 +45,8 @@ class CommandEvent(Event):
     """
     command: CommandType
 
-class StartupStageEnum(Enum):
+
+class StartupStage(Enum):
     """
     An enum representing the different stages of the startup process.
     """
@@ -35,7 +59,7 @@ class StartupEvent(Event):
     """
     A dataclass representing an event to be raised when the system is starting up.
     """
-    stage: StartupStageEnum
+    stage: StartupStage
 
 @dataclass
 class TaskCreatedEvent(Event):
@@ -50,25 +74,9 @@ class TaskCreatedEvent(Event):
     pretty_sender: str
 
 @dataclass
-class OutputAvailableUpdate(Event):
-    """
-    A dataclass representing an event to be raised when the system's outputs or commands change availability.
-    """
-    output_type: SystemOutputType
-    output_available: bool
-
-@dataclass
-class InputActiveUpdate(Event):
-    """
-    A dataclass representing an event to be raised when the system's inputs change availability.
-    """
-    input_type: SystemInputType
-    input_active: bool
-
-@dataclass
-class CommandAvailableUpdate(Event):
+class CommandAvailabilityEvent(Event):
     """
     A dataclass representing an event to be raised when the system's commands change availability.
     """
-    command: CommandType
+    command_type: CommandType
     command_available: bool
