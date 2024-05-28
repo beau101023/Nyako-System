@@ -14,6 +14,14 @@ class Audio_Player(ABC):
         Parameters:
         input_data: the audio data to play
         """
+    
+    def set_volume(self, volume: float) -> None:
+        """
+        Set the volume of the audio player.
+
+        Parameters:
+        volume (float): the volume to set
+        """
 
 class PyAudioPlayer(Audio_Player):
     def __init__(self, volume: float = 1.0):
@@ -24,7 +32,7 @@ class PyAudioPlayer(Audio_Player):
         self.volume = volume
 
     def play_audio(self, input_data: Tensor|np.ndarray|bytes) -> None:
-        audio_bytes = audioToBytes(input_data)
+        audio_bytes = audioToBytes(input_data, self.volume)
 
         # Create a new thread for playing the audio
         thread = threading.Thread(target=self.playAudioInNewThread, args=(audio_bytes,))
