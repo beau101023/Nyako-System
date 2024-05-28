@@ -1,12 +1,13 @@
 import asyncio
 from aioconsole import ainput
 
-from nyako.events.IO import UserInputEvent, SystemInputType
-from events.System import TaskCreatedEvent
-from nyako.event_system.EventBus import EventBus
-from nyako.event_system.EventBusSingleton import EventBusSingleton
+from event_system.events.Pipeline import UserInputEvent, SystemInputType
+from event_system.events.System import TaskCreatedEvent
+from event_system import EventBus
+from event_system import EventBusSingleton
+from pipesys.Pipe import Pipe
 
-class ConsoleInput:
+class ConsoleInput(Pipe):
     event_bus: EventBus
     stopped: bool = False
 
@@ -16,13 +17,13 @@ class ConsoleInput:
         self.event_bus = EventBusSingleton.get()
 
         task = asyncio.create_task(self.run())
-        await self.event_bus.publish(TaskCreatedEvent(task))
+        await self.event_bus.publish(TaskCreatedEvent(task, "Console Input"))
         return self
 
     async def run(self):
         while not self.stopped:
             message = await ainput(">>> ")
-            await self.event_bus.publish(UserInputEvent(message, SystemInputType.CONSOLE))
+            await self.event_bus.publish(UserInputEvent(message, self, SystemInputType.CONSOLE))
 
     async def onStop(self):
         self.stopped = True
