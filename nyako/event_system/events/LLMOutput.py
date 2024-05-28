@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from event_system import Event
 
-from Pipeline import SystemOutputType
-from System import CommandType
+from .Pipeline import SystemOutputType
+from .System import CommandType
 
 @dataclass
 class NoTagsEvent(Event):
