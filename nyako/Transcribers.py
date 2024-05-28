@@ -60,7 +60,7 @@ class WhisperTranscriber(Transcriber):
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
-    def transcribeSpeech(self, speechBuffer, input_gain=1.0):
+    def transcribeSpeech(self, speechBuffer: bytes, input_gain=1.0):
         speechBufferNumPyArray = np.fromstring(speechBuffer, dtype=np.float32)
 
         # apply input gain
@@ -124,13 +124,13 @@ class TranscriberPool:
         self.TranscriberClass: Type[Transcriber] = TranscriberClass
         self.pool: Dict[str, Transcriber] = {}
         self.overflow_pool_size: int = spare_transcribers
-        self.overflow_pool: Queue = Queue()
+        self.overflow_pool: Queue[TranscriberClass] = Queue()
         
         for _ in range(spare_transcribers):
             self.initializeTranscriber()
 
     def getTranscriber(self, user_id: str) -> Transcriber:
-        transcriber: Transcriber = None
+        transcriber: Transcriber | None = None
 
         if user_id in self.pool:
             transcriber = self.pool[user_id]
