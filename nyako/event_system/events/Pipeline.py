@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Type
+from typing import Type, TYPE_CHECKING
 
 from event_system import Event
 
-from pipesys.Pipe import Pipe
+if TYPE_CHECKING:
+    from pipesys import Pipe
 
 @dataclass
 class MessageEvent(Event):
@@ -12,7 +13,12 @@ class MessageEvent(Event):
     An event that pipes raise when they have a message to pass along.
     """
     message: str|None = None
-    sender: Pipe | Type[Pipe] | None = None
+    sender: 'Pipe' | Type['Pipe'] | None = None
+
+    def __str__(self) -> str:
+        if self.message == None:
+            return ""
+        return self.message
 
 class SystemInputType(Enum):
     """
@@ -90,6 +96,11 @@ class OutputMessageEvent(MessageEvent):
     A dataclass representing an event to be raised to deliver output to a specific destination.
     """
     destination: SystemOutputType = SystemOutputType.CONSOLE
+
+    def __str__(self) -> str:
+        if self.message == None:
+            return ""
+        return self.message
 
 @dataclass
 class OutputAvailabilityEvent(Event):
