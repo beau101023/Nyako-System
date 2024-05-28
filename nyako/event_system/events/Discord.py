@@ -1,11 +1,20 @@
+from typing import Union
+
 from dataclasses import dataclass
-import discord
+from discord import VoiceClient, Client
 
 from event_system import Event
 
+from discord import TextChannel, VoiceChannel, StageChannel, Thread, DMChannel, PartialMessageable, GroupChannel
+
+PartialMessageableChannel = Union[
+    TextChannel, VoiceChannel, StageChannel, Thread, DMChannel, PartialMessageable
+]
+MessageableChannel = Union[PartialMessageableChannel, GroupChannel]
+
 @dataclass
 class VoiceChannelConnectedEvent(Event):
-    client: discord.VoiceClient
+    voice_client: VoiceClient
 
 @dataclass
 class VoiceChannelDisconnectedEvent(Event):
@@ -13,4 +22,8 @@ class VoiceChannelDisconnectedEvent(Event):
 
 @dataclass
 class TextChannelConnectedEvent(Event):
-    channel: discord.TextChannel
+    channel: MessageableChannel
+
+@dataclass
+class BotReadyEvent(Event):
+    client: Client
