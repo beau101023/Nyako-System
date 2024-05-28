@@ -1,21 +1,21 @@
 import asyncio
-from EventBus import EventBus
-from EventTopics import Topics
+
+from event_system.EventBusSingleton import EventBusSingleton
+
+from event_system.events.System import CommandEvent, CommandType
 
 # simple class to manage sleep/wake events
 class SleepManager:
     wake_event: asyncio.Event
-    event_bus: EventBus
 
     def __init__(self):
         pass
 
-    async def create(event_bus: EventBus):
+    async def create():
         self = SleepManager()
         self.wake_event = asyncio.Event()
-        self.event_bus = event_bus
-        event_bus.subscribe(self.sleep, Topics.System.SLEEP)
-        event_bus.subscribe(self.wake, Topics.System.WAKE)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.SLEEP), self.sleep)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.WAKE), self.wake)
         return self
 
     async def sleep(self):
@@ -33,7 +33,7 @@ class SleepManager:
             await asyncio.wait_for(self.wake_event.wait(), timeout=sleep_length)
         except asyncio.TimeoutError:
             # if the wake event isn't set, wake up
-            await self.event_bus.publish(Topics.System.WAKE)
+            await EventBusSingleton.publish(CommandEvent(CommandType.WAKE))
         finally:
             # if the wake event was set, Topics.System.WAKE was already published
             self.wake_event.clear()
