@@ -72,11 +72,15 @@ class ConversationSession:
         self.systemP = format_message_as_dict("system", systemP)
         self.summarizeP = format_message_as_dict("system", summarizeP)
         self.messages = []
-        self.memory = ""
+        self.memory = {}
 
     def query(self, message: str) -> str:
         self._add_message_to_history(message)
         response = self._get_response_from_model()
+
+        if not response:
+            return ""
+
         self._handle_response(response)
         return response
 
@@ -121,9 +125,10 @@ class ConversationSession:
 
     def _build_context(self):
         context = [self.systemP]
-        if self.getLongTermMemory() != None:
-            context.append(self.getLongTermMemory())
-        if self.memory != "":
+        ltm = self.getLongTermMemory()
+        if ltm:
+            context.append(ltm)
+        if self.memory:
             context.append(self.memory)
         context += self.messages
         return context
@@ -151,6 +156,10 @@ class ConversationSession:
         else:
             memory_management_input = [self.summarizeP] + memory_management_input
         memory_response = get_response(memory_management_input, params.summarization_model)
+
+        if memory_response is None:
+            return
+
         insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in messages]))
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
