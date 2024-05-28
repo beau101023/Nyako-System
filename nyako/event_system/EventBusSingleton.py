@@ -30,7 +30,7 @@ class EventBusSingleton():
         return cls._instance
     
     @staticmethod
-    def subscribe(event: Event, handler: EventHandler) -> None:
+    def subscribe(event: Event | type[Event], handler: EventHandler) -> None:
         """
         Subscribes a handler to a specific event type with optional filtering based on event fields.
         
@@ -46,7 +46,7 @@ class EventBusSingleton():
         EventBusSingleton.get().subscribe(event, handler)
 
     @staticmethod
-    def unsubscribe(event: Event, handler: EventHandler) -> None:
+    def unsubscribe(event: Event | type[Event], handler: EventHandler) -> None:
         """
         Unsubscribes a handler from a specific event type.
         
