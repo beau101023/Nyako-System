@@ -157,7 +157,4 @@ class TranscriberPool:
             self.initializeTranscriber()
 
     def initializeTranscriber(self):
-        if device == 'cuda':
-            self.overflow_pool.put(self.TranscriberClass(on_cuda=True))
-        else:
-            self.overflow_pool.put(self.TranscriberClass(on_cuda=False))
+        self.overflow_pool.put(self.TranscriberClass())
