@@ -1,12 +1,20 @@
-from EventTopics import Topics
+from overrides import override
+from event_system.Event import Event
+from event_system.EventBusSingleton import EventBusSingleton
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
+from pipesys import OutputPipe, Pipe, MessageReceiver
 
-class ConsoleOutput:
+
+class ConsoleOutput(MessageReceiver, OutputPipe):
     """
     Outputs messages to the console.
     """
 
+    def __init__(self, listen_to):
+        super().__init__(listen_to)
+
     @classmethod
-    async def create(self, event_bus, listen_topic):
+    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent]):
         """
         Creates an instance of the ConsoleOutput module.
 
@@ -15,17 +23,13 @@ class ConsoleOutput:
         listen_topic (str): the topic to listen for messages on
         """
 
-        self = ConsoleOutput()
-        self.tag = "console"
-        self.event_bus = event_bus
-        stateUpdate = Topics.OutputStateUpdate(self.tag, True)
-        await self.event_bus.publish(Topics.System.OUTPUT_STATE, stateUpdate)
-        
-        self.event_bus.subscribe(self.onMessage, listen_topic)
+        self = ConsoleOutput(listen_to)
+        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.CONSOLE, True))
 
         return self
 
-    async def onMessage(self, message: str):
+    @override
+    async def onMessage(self, event: MessageEvent):
         """
         Outputs a message to the console asynchonously.
         
@@ -33,4 +37,4 @@ class ConsoleOutput:
         message (str): the message to output
         """
 
-        print("\n" + message)
+        print("\n" + str(event))
