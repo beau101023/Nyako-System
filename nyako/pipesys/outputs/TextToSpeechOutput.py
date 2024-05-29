@@ -1,68 +1,73 @@
-import nyako.TTS as TTS
-from EventTopics import Topics
-from EventBus import EventBus
 import threading
 
-from nyako.TTS import TextToSpeech
+from TTS import TextToSpeech, SileroRVC_TTS
 
 from audio_playback import Audio_Player
 from audio_playback import PyAudioPlayer
 
-from nyako.TTS import SileroRVC_TTS
+
+from event_system import EventBusSingleton
+from event_system.events.System import StartupEvent, StartupStage
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
+from event_system.events.Audio import AudioDirection, VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
+
+from pipesys import Pipe
 
 
 class TextToSpeechOutput:
-    event_bus: EventBus
     speech_to_text: TextToSpeech
     audio_player: Audio_Player
 
     def __init__(self):
-        # the tag to register with the message router
-        self.tag = "voice"
         self.volume: float = 1.0
 
     @classmethod
-    async def create(cls, event_bus: EventBus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
+    async def create(cls, listen_to: Pipe, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
         self = TextToSpeechOutput()
-        self.event_bus = event_bus
 
         self.speech_to_text = speech_to_text
         self.audio_player = audio_player
 
         # subscribe to events
-        self.event_bus.subscribe(self.onWarmup, Topics.System.WARMUP)
-        self.event_bus.subscribe(self.onMessage, listen_topic)
-        self.event_bus.subscribe(self.onVolumeUpdate, Topics.Audio.OUTPUT_VOLUME_UPDATE)
+        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
+        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.onMessage)
+        EventBusSingleton.subscribe(VolumeUpdatedEvent(audio_type=AudioType.SYSTEM, audio_direction=AudioDirection.OUTPUT), self.onVolumeUpdate)
 
         # notify system that tts is ready
-        stateUpdate = Topics.OutputStateUpdate(self.tag, True)
-        await self.event_bus.publish(Topics.System.OUTPUT_STATE, stateUpdate)
+        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.VOICE, True))
 
         return self
 
-    async def onMessage(self, message: str):
+    async def onMessage(self, event: MessageEvent):
+        msg = event.message
+
         # tts breaks if you send it nothing
-        if message == None or message == "" or message == " ":
+        if msg == None or msg == "" or msg == " ":
             return
         
         # avoid blocking with speech output processing
-        thread = threading.Thread(target=self.say, args=(message,))
+        thread = threading.Thread(target=self.say, args=(msg,))
         thread.start()
 
-    async def onVolumeUpdate(self, event: Topics.VolumeUpdate):
-        self.volume = event.volume
+    async def onVolumeUpdate(self, event: VolumeUpdatedEvent):
+        if event.volume == None:
+            return
+
+        self.audio_player.set_volume(event.volume)
 
     def say(self, text):
         audio = self.speech_to_text.generate_speech(text)
+
+        if audio == None:
+            return
+
         self.audio_player.play_audio(audio)
 
-    def onWarmup(self):
-        TTS.warmup()
+    def onWarmup(self, event: StartupEvent):
+        self.speech_to_text.warmup()
 
     async def publishSpeakingStart(self):
-        update = Topics.SpeakingStateUpdate(starting=True)
-        await self.event_bus.publish(Topics.TTS.SPEAKING_STATE, update)
+        await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.SYSTEM, AudioDirection.OUTPUT))
 
     async def publishSpeakingEnd(self):
-        update = Topics.SpeakingStateUpdate(ending=True)
-        await self.event_bus.publish(Topics.TTS.SPEAKING_STATE, update)
+        await EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.SYSTEM, AudioDirection.OUTPUT))
