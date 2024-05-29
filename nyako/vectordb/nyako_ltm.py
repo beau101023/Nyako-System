@@ -1,4 +1,6 @@
-from docarray.index import HnswDocumentIndex
+import numpy as np
+
+from docarray.index.backends.hnswlib import HnswDocumentIndex
 from docarray import DocList
 from vectordb.data_schema import MemoryMessage
 from params import CLIENT_INSTANCE as client
@@ -7,9 +9,13 @@ from params import similarity_threshold
 # workspace path
 similarityIndex = HnswDocumentIndex[MemoryMessage](work_dir='./vectordb/workspace_path')
 
-def insertToMemory(summary: str, origin_messages: str):
+def insertToMemory(text: str | None, origin_messages: str):
+    if text is None:
+        return
+
     embedding = client.embeddings.create(input=origin_messages, model="text-embedding-ada-002").data[0].embedding
-    similarityIndex.index(DocList[MemoryMessage]([MemoryMessage(text=summary, insertionOrdinal=similarityIndex.num_docs(), embedding=embedding, origin_messages=origin_messages)]))
+    embedding = np.array(embedding, dtype=float)
+    similarityIndex.index(DocList[MemoryMessage]([MemoryMessage(text=text, insertionOrdinal=similarityIndex.num_docs(), embedding=embedding, origin_messages=origin_messages)]))
 
 def retrieveMemoriesWithContext(message: str, memoriesToRetrieve: int, contextSize: int):
     memories = queryMemory(message, memoriesToRetrieve)
@@ -22,6 +28,7 @@ def retrieveMemoriesWithContext(message: str, memoriesToRetrieve: int, contextSi
 # returns a list of memories that are similar to the query
 def queryMemory(toSearch: str, limit: int) -> list:
     embedding = client.embeddings.create(input=toSearch, model="text-embedding-ada-002").data[0].embedding
+    embedding = np.array(embedding, dtype=float)
     # everything is ignored except the embedding field
     query = MemoryMessage(text='', insertionOrdinal=0, embedding=embedding, origin_messages='')
     results, scores = similarityIndex.find(query, limit=limit, search_field='embedding')
