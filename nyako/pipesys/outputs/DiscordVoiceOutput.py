@@ -1,13 +1,15 @@
 import discord
+import asyncio
 
-from nyako.TTS import TextToSpeech
-from nyako.TTS import SileroRVC_TTS
+from io import BytesIO
+
+from TTS import TextToSpeech, SileroRVC_TTS
 
 from event_system.EventBusSingleton import EventBusSingleton
 
 from event_system.events.Discord import VoiceChannelConnectedEvent, VoiceChannelDisconnectedEvent
-from event_system.events.Pipeline import MessageEvent
-from event_system.events.System import OutputAvailableUpdate, SystemOutputType
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
+from event_system.events.Audio import AudioDirection, SpeakingStateUpdate, AudioType
 
 from pipesys.Pipe import OutputPipe, Pipe
 
@@ -17,43 +19,50 @@ class DiscordVoiceOutput(OutputPipe):
     """
 
     text_to_speech: TextToSpeech
-    discord_client: discord.Client
-    voice_connection: discord.VoiceClient
+    voice_connection: discord.VoiceClient | None = None
+    asyncio_main_loop: asyncio.AbstractEventLoop
 
     def __init__(self):
         self.voice_connection = None
+        self.asyncio_main_loop = asyncio.get_event_loop()
 
     @classmethod
-    async def create(cls, discord_client, listen_to: Pipe, speech_to_text: TextToSpeech=SileroRVC_TTS()):
+    async def create(cls, listen_to: Pipe, speech_to_text: TextToSpeech=SileroRVC_TTS()):
         self = DiscordVoiceOutput()
 
-        self.discord_client = discord_client
         self.text_to_speech = speech_to_text
 
         EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
-        EventBusSingleton.subscribe(MessageEvent(None, listen_to), self.handleMessage)
+        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.handleMessage)
 
         return self
     
     async def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
-        self.voice_connection = event.client
+        self.voice_connection = event.voice_client
 
-        await EventBusSingleton.publish(OutputAvailableUpdate(SystemOutputType.DISCORD_VOICE, True))
+        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, True))
 
     async def onVoiceChannelDisconnected(self, event: VoiceChannelDisconnectedEvent):
         self.voice_connection = None
 
-        await EventBusSingleton.publish(OutputAvailableUpdate(SystemOutputType.DISCORD_VOICE, False))
+        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, False))
 
     async def handleMessage(self, event: MessageEvent):
-        if self.voice_connection == None:
+        if self.voice_connection == None or event.message == None:
             return
 
         audio = self.text_to_speech.generate_speech(event.message)
 
-        self.voice_connection.play(discord.PCMAudio(audio))
+        if audio == None:
+            return
 
+        audio = BytesIO(audio)
 
+        await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.OUTPUT))
+        self.voice_connection.play(discord.PCMAudio(audio), after= self.finishedPlayingCallback)
 
-        
+    def finishedPlayingCallback(self, ex: Exception | None):
+        asyncio.run_coroutine_threadsafe(
+            EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT)),
+            self.asyncio_main_loop)
