@@ -1,92 +1,156 @@
-from EventTopics import Topics
-from EventBus import EventBus
 import re
+
+from event_system import EventBusSingleton
+from pipesys import Pipe
 
 from params import debug_mode
 
-class MessageRouter():
-    event_bus: EventBus
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputMessageEvent
+from event_system.events.System import CommandEvent, CommandAvailabilityEvent, CommandType
+from event_system.events.LLMOutput import InvalidTagEvent, InactiveOutputEvent, InactiveCommandEvent, NoTagsEvent
 
-    def __init__(self, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
-        self.event_bus = event_bus
-        self.activeOutputs = set()
-        self.errorFeedbackReceivers = []
-        self.event_bus.subscribe(self.onOutputStateChanged, Topics.System.OUTPUT_STATE)
-        self.event_bus.subscribe(self.onMessage, listen_topic)
+class MessageRouter(Pipe):
+    def __init__(self, listen_to: Pipe):
+        self.active_outputs: set[SystemOutputType] = set()
+        self.active_commands: set[CommandType] = set()
+        EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputStateChanged)
+        EventBusSingleton.subscribe(CommandAvailabilityEvent, self.onCommandStateChanged)
+        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.onMessage)
 
-    async def onMessage(self, message: str):
+    async def onMessage(self, event: MessageEvent):
+        """
+        The MessageRouter class expects a message consisting of n parts of the format [output_type] message.\
+        """
 
-        # Split the message by tag, capturing the tag still
-        parts = re.split(r'(\[.*?\])', message)
+        message = event.message
+
+        # discard if message is none, empty, or only whitespace
+        if message == None or message.strip() == "":
+            return
+
+        # Split the message by tag.
+        parts = self.splitByTag(message)
 
         # Find the index of the first valid tag
-        first_tag_index = next((i for i, part in enumerate(parts) if re.match(r'\[.*?\]', part)), None)
+        first_tag_index = self.get_first_tag_in_list(parts)
 
         # If there is no valid tag, send an error
         if first_tag_index is None:
-            await self.all_outputs_send(message)
+            await EventBusSingleton.publish(NoTagsEvent())
             return
 
         # Remove elements before the first valid tag
         parts = parts[first_tag_index:]
 
-        # here, we assume that parts takes the form [tag, message, tag, message, ...]
-        for i in range(0, len(parts) - 1, 2):
-            # Get the tag and the message
+        # Parse out all tags and messages and handle them
+        await self.handle_tagged_list(parts)
+
+    async def handle_tagged_list(self, parts):
+        i: int = 0
+        while i < len(parts):
+            # If i doesn't point to a tag, continue
+            if not self.is_tag(parts[i]):
+                i += 1
+                continue
+
             tag = parts[i].strip()[1:-1].lower()
-            message = parts[i + 1].strip()
 
-            # sends to all outputs except tagged. Sends before the main send to avoid getting interrupted if the shutdown command is sent
-            if debug_mode:
-                await self.all_outputs_except(message, tag)
+            # If `i` is a command, handle it
+            if CommandType.fromString(tag):
+                await self.handle_command_tag(tag)
+                i += 1
+                continue
 
-            await self.send(message, tag)
+            # If we're at the end of parts and there's a non-command tag, ignore it
+            if i == len(parts) - 1:
+                i += 1
+                continue
 
-    async def onOutputStateChanged(self, event: Topics.OutputStateUpdate):
-        if not event.tag in self.activeOutputs and not event.output_active:
+            # If `i` is a valid output tag but it's followed by another tag, ignore it
+            if SystemOutputType.fromString(tag) and self.is_tag(parts[i + 1]):
+                i += 1
+                continue
+
+            # If `i` is a valid output tag and it's followed by a non-tag part, handle it
+            if SystemOutputType.fromString(tag):
+                message = parts[i+1]
+                await self.handle_output_tag(tag, message)
+                i += 2
+                continue
+
+            # If `i` is an invalid but well-formed tag, raise invalidtagevent
+            await EventBusSingleton.publish(InvalidTagEvent(tag))
+
+    async def handle_command_tag(self, tag: str) -> None:
+        command = CommandType.fromString(tag)
+        if command == None:
+            await EventBusSingleton.publish(InvalidTagEvent(tag))
+        elif command in self.active_commands:
+            await EventBusSingleton.publish(CommandEvent(command))
+        else:
+            await EventBusSingleton.publish(InactiveCommandEvent(command))
+
+    async def handle_output_tag(self, tag: str, message: str) -> None:
+        """
+        Handles a message with a valid output tag.
+
+        Parameters:
+        tag (str): the tag to handle
+        message (str): the message to handle
+        """
+        output_types: list[SystemOutputType]|None = SystemOutputType.fromString(tag)
+        if output_types == None:
+            await EventBusSingleton.publish(InvalidTagEvent(tag))
             return
         
-        if event.output_active:
-            self.activeOutputs.add(event.tag)
-        else:
-            self.activeOutputs.remove(event.tag)
+        for output_type in output_types:
+            if output_type in self.active_outputs:
+                if debug_mode:
+                    await EventBusSingleton.publish(OutputMessageEvent(message, self, SystemOutputType.ALL))
+                else:
+                    await EventBusSingleton.publish(OutputMessageEvent(message, self, output_type))
+            else:
+                await EventBusSingleton.publish(InactiveOutputEvent(message, output_type))
 
-    async def send(self, text: str, tag: str):
-        if not tag in self.activeOutputs:
-            await self.sendErrorFeedback(self.nonexistentTagFeedback(tag))
-            return
+    def get_first_tag_in_list(self, list: list[str]) -> int|None:
+        """
+        Returns the index of the first valid tag in a list of strings.
 
-        topic = getattr(Topics.Router, tag.upper(), None)
-        if topic is None:
-            await self.sendErrorFeedback(self.nonexistentTagFeedback(tag))
-            return
-
-        if debug_mode:
-            print("ROUTING MESSAGE: '" + text + "' to TOPIC: " + topic)
-
-        await self.event_bus.publish(topic, text)
-
-    async def all_outputs_except(self, text: str, tag: str):
-        # send to every topic in router.outputs except the one specified in the tag
-        for output in [output for output in dir(Topics.Router.Outputs) if not output.startswith('__') and output != tag.upper()]:
-            await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[" + tag + "] " + text)
-
-    async def all_outputs_send(self, text: str):
-        # send to every topic in router.outputs
-        for output in [output for output in dir(Topics.Router.Outputs) if not output.startswith('__')]:
-            await self.event_bus.publish(getattr(Topics.Router.Outputs, output), "[untagged] " + text)
-
-    async def sendErrorFeedback(self, message):
-        try:
-            raise Exception(message)
-        except Exception as error:
-            await self.event_bus.publish(Topics.Router.ERROR, str(error))
-
-    def getOutputTags(self):
-        return [tag for tag in self.activeOutputs]
-
-    def invalidInputFeedback(self):
-        return "[system] You need to tag your messages like \"["+self.getOutputTags()[0]+"] hi, I'm nyako!\" if you want the user to see them! Available tags: [" + "], [".join(self.getOutputTags()) + "]"
+        Parameters:
+        list (list[str]): the list to search
+        """
+        for i, part in enumerate(list):
+            if self.is_tag(part):
+                return i
+        return None
     
-    def nonexistentTagFeedback(self, tag: str):
-        return "[system] The tag '" + tag + "' is disabled! Available tags: [" + "], [".join(self.getOutputTags()) + "]"
+    def is_tag(self, candidate: str) -> bool:
+        """
+        Returns whether a string is a tag.
+
+        Parameters:
+        candidate (str): the string to check
+        """
+        return not re.match(r'\[.*?\]', candidate) == None
+
+    def splitByTag(self, message: str) -> list[str]:
+        """
+        Splits a message into a list[str] of the format [tag, message, tag, message, ...]
+            when the initial message is of the form `[tag] message [tag] message`.
+        
+        Parameters:
+        message (str): the message to split
+        """
+        return re.split(r'(\[.*?\])', message)
+
+    async def onOutputStateChanged(self, event: OutputAvailabilityEvent):
+        if event.output_available:
+            self.active_outputs.add(event.output_type)
+        else:
+            self.active_outputs.remove(event.output_type)
+
+    async def onCommandStateChanged(self, event: CommandAvailabilityEvent):
+        if event.command_available:
+            self.active_commands.add(event.command_type)
+        else:
+            self.active_commands.remove(event.command_type)
