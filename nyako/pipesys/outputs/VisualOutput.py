@@ -1,12 +1,18 @@
-import tkinter as tk
 import asyncio
 import os
-from PIL import Image, ImageTk
-from EventTopics import Topics
+from overrides import override
 
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import Qt
+
+from event_system import Event, EventBusSingleton
+from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
+from event_system.events.Pipeline import MessageEvent
+from pipesys import MessageReceiver, OutputPipe, Pipe
 from params import CLIENT_INSTANCE as client
 
-class VisualOutput:
+class VisualOutput(MessageReceiver, OutputPipe):
     """
     Provides a visual complement to other outputs.
     Current implementation is a simple window that displays emotion images based on sentiment analysis of the conversation.
@@ -14,29 +20,31 @@ class VisualOutput:
 
     stopped: bool = False
 
-    def __init__(self, event_bus, listen_topic, master):
-        self.event_bus = event_bus
+    def __init__(self, parent, listen_to):
+        self.window = QMainWindow(parent)
+        MessageReceiver.__init__(self, listen_to)
 
-        self.window = tk.Toplevel(master=master)
-        self.window.title("nyako")
-        self.window.geometry("500x600")
+        self.window.setWindowTitle("nyako")
+        self.window.setGeometry(0, 0, 500, 600)
 
-        self.image_panel = tk.Label(self.window)
-        self.image_panel.pack(side="top")
+        widget = QWidget(self.window)
+        self.window.setCentralWidget(widget)
 
-        self.text_panel = tk.Label(self.window, wraplength=500, justify="left", font=("Helvetica", 20))
-        self.text_panel.pack(side="bottom")
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
 
-        print(os.getcwd())
+        self.image_panel = QLabel(self.window)
+        layout.addWidget(self.image_panel, alignment=Qt.AlignmentFlag.AlignTop)
+
+        self.text_panel = QLabel(self.window)
+        self.text_panel.setWordWrap(True)
+        layout.addWidget(self.text_panel, alignment=Qt.AlignmentFlag.AlignBottom)
 
         self.setEmote("nyako/images/neutral.png")
         self.setText("[listening]")
 
-        self.event_bus.subscribe(self.onMessage, listen_topic)
-        self.event_bus.subscribe(self.onStop, Topics.System.STOP)
-
     @classmethod
-    async def create(cls, event_bus, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY, master=None):
+    async def create(cls, listen_to: Event|Pipe|type[Event], parent=None):
         """
         Creates an instance of the VisualOutput module.
 
@@ -45,21 +53,27 @@ class VisualOutput:
         listen_topic (str): the channel to listen to for messages
         master (tk.Tk): the master window to use
         """
+        self = VisualOutput(parent, listen_to)
 
-        self = VisualOutput(event_bus, listen_topic, master)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
 
-        self.task = asyncio.create_task(self.updateWindowTask())
-        await self.event_bus.publish(Topics.System.TASK_CREATED, self.task)
+        task = asyncio.create_task(self.runVisualOutput())
+        await EventBusSingleton.publish(TaskCreatedEvent(task, "Visual Output"))
         
         return self
 
-    async def onMessage(self, message: str):
-        if message == None or self.stopped:
+    @override
+    async def onMessage(self, event: MessageEvent):
+        if event.message == None or self.stopped:
             return
 
-        emotion = await self.ChatGPTClassify(message)
+        self.setText(event.message)
 
-        self.setText(message)
+        emotion = await self.ChatGPTClassify(event.message)
+
+        if emotion == None:
+            self.setEmote("nyako/images/neutral.png")
+            return
         self.setEmote("nyako/images/" + emotion + ".png")
 
     async def ChatGPTClassify(self, message: str):
@@ -87,26 +101,19 @@ class VisualOutput:
         return emotion
     
     def setEmote(self, path: str):
-        img = Image.open(path)
-        img.thumbnail((500, 500))
-        img = ImageTk.PhotoImage(img)
-        self.image_panel.configure(image=img)
-        self.image_panel.image = img
-        self.image_panel.pack(side="top", fill="both", expand="no")
+        pixmap = QPixmap(path)
+        pixmap = pixmap.scaled(500, 500, Qt.AspectRatioMode.KeepAspectRatio)
+        self.image_panel.setPixmap(pixmap)
 
     def setText(self, text: str):
-        self.text_panel.configure(text=text)
-        self.text_panel.pack(side="bottom", fill="x", expand="yes")
+        self.text_panel.setText(text)
 
-    async def updateWindowTask(self):
+    async def runVisualOutput(self):
+        self.window.show()
+
+        # keepalive
         while not self.stopped:
-            self.window.update()
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(1/30)
 
-        try:
-            self.window.destroy()
-        except tk.TclError:
-            pass
-
-    async def onStop(self):
+    async def onStop(self, event: CommandEvent):
         self.stopped = True
