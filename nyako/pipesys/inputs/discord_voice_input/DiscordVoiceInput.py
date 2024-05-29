@@ -1,36 +1,36 @@
 import discord
 
-from event_system.EventBusSingleton import EventBusSingleton
+from event_system import EventBusSingleton
 
-from event_system.events.Audio import VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
+from event_system.events.Audio import AudioDirection, VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
 from event_system.events.System import TaskCreatedEvent, CommandEvent, CommandType
-from event_system.events.IO import UserInputEvent, SystemInputType
+from event_system.events.Pipeline import UserInputEvent, SystemInputType
 from event_system.events.Discord import VoiceChannelConnectedEvent, VoiceChannelDisconnectedEvent
 
 import asyncio
+from pipesys import Pipe
 from pipesys.inputs.discord_voice_input.StreamSink import StreamSink
 import torch
 
 from nyako_vad import detectVoiceActivity
-from nyako.Transcribers import Transcriber
-from nyako.Transcribers import WhisperTranscriber
+from Transcribers import Transcriber
+from Transcribers import WhisperTranscriber
 
 from typing import Dict
 from pydub import AudioSegment
 from params import speech_sensitivity_threshold, debug_mode
 import numpy as np
-import io
 from threading import Thread
 
-class DiscordVoiceInput:
+class DiscordVoiceInput(Pipe):
     stream_sink : StreamSink
-    client : discord.Client
+    client : discord.Client | None = None
     speechRecordingTriggeredByUser : Dict[str, bool]
     speechBufferByUser : Dict[str, list[AudioSegment]]
     noSpeechTimeByUser : Dict[str, float]
     inputGain : float
     transcriber : Transcriber
-    voice_connection: discord.VoiceClient
+    voice_connection: discord.VoiceClient | None
 
     def __init__(self):
         self.voice_client = None
@@ -44,20 +44,19 @@ class DiscordVoiceInput:
         self.stopped = False
 
     @classmethod
-    async def create(cls, client: discord.Client, transcriber: Transcriber = WhisperTranscriber()) -> 'DiscordVoiceInput':
+    async def create(cls, transcriber: Transcriber = WhisperTranscriber()) -> 'DiscordVoiceInput':
         self = DiscordVoiceInput()
         self.transcriber = transcriber
-        self.client = client
 
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
-        EventBusSingleton.subscribe(VolumeUpdatedEvent(None, AudioType.SYSTEM_IN), self.onInputVolumeUpdate)
+        EventBusSingleton.subscribe(VolumeUpdatedEvent(None, AudioType.DISCORD, AudioDirection.INPUT), self.onInputVolumeUpdate)
 
         EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
 
         # create task
         task = asyncio.create_task(self.run())
-        await EventBusSingleton.publish(TaskCreatedEvent(task))
+        await EventBusSingleton.publish(TaskCreatedEvent(task, "Discord Voice Input"))
 
         return self
     
@@ -85,7 +84,7 @@ class DiscordVoiceInput:
                     # check if this is the first user to speak
                     if not any(self.speechRecordingTriggeredByUser.values()):
                         # if so, notify that user speech has started
-                        await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD_IN))
+                        await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.INPUT))
 
                 if self.speechRecordingTriggeredByUser.get(user, False):
                     # initialize speech buffer for user if it doesn't exist
@@ -108,7 +107,7 @@ class DiscordVoiceInput:
                         # all users have ceased speaking
                         if not any(self.speechRecordingTriggeredByUser.values()):
                             # notify that user speech has ended
-                            await EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD_IN))
+                            await EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT))
 
                         speech_buffer = self.speechBufferByUser[user]
 
@@ -134,7 +133,7 @@ class DiscordVoiceInput:
     # converts the audio segments to a single numpy array and transcribes it
     def transcribeSpeechAndPublish(self, speechBuffer: list[AudioSegment], user: str, loop: asyncio.AbstractEventLoop):
         # Convert each AudioSegment to raw data and concatenate
-        raw_data = b''.join(segment.raw_data for segment in speechBuffer)
+        raw_data = b''.join(segment.raw_data for segment in speechBuffer if segment.raw_data != None)
 
         # Convert raw data to numpy array
         numpy_array = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32)
@@ -149,27 +148,30 @@ class DiscordVoiceInput:
             print("[voice] {0}: {1}".format(user, transcribed_speech))
         
         # publish to pipeline
-        coroutine = EventBusSingleton.publish(UserInputEvent(transcribed_speech, SystemInputType.DISCORD_VOICE, user_name=user))
+        coroutine = EventBusSingleton.publish(UserInputEvent(transcribed_speech, self, SystemInputType.DISCORD_VOICE, user_name=user))
         asyncio.run_coroutine_threadsafe(coroutine, loop)
 
 
     def onInputVolumeUpdate(self, event: VolumeUpdatedEvent):
         self.input_gain = event.volume
 
-    def stop(self):
+    def stop(self, event: CommandEvent):
         self.stopped = True
 
     def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
-        self.voice_connection = event.client
-        self.stream_sink.set_voice_client(event.client)
+        self.voice_connection = event.voice_client
+        self.stream_sink.set_voice_client(event.voice_client)
 
         # play sample to initialize the voice client
-        sample = io.FileIO("nyako/audio/Basic 808 Kick_2.wav")
+        sample = open("nyako/audio/Basic 808 Kick_2.wav", 'rb')
         self.voice_connection.play(discord.PCMAudio(sample))
 
         self.voice_connection.start_recording(sink=self.stream_sink, callback=self.recording_stopped_callback)
 
     def onVoiceChannelDisconnected(self, event: VoiceChannelDisconnectedEvent):
+        if self.voice_connection == None:
+            return
+
         self.voice_connection.stop_recording()
         self.voice_connection = None
 
