@@ -1,32 +1,31 @@
 import discord
-from EventBus import EventBus
-from EventTopics import Topics
+from event_system.EventBusSingleton import EventBusSingleton
+
+from event_system.events.Discord import TextChannelConnectedEvent
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
+from pipesys import Pipe
 
 class DiscordOutput:
-    def __init__(self, event_bus: EventBus, recieve_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
-        self.event_bus = event_bus
-        self.recieve_topic = recieve_topic
-        self.listeningChannel = None
+    def __init__(self):
+        self.sendChannel: discord.abc.MessageableChannel | None = None
 
     @classmethod
-    async def create(cls, event_bus: EventBus, client: discord.Client, listen_topic=Topics.Pipeline.CONVERSATION_SESSION_REPLY):
-        self = DiscordOutput(event_bus, recieve_topic=listen_topic)
-        self.event_bus.subscribe(self.set_channel, Topics.Discord.VOICE_CHANNEL_SET)
-        self.event_bus.subscribe(self.send_message, self.recieve_topic)
+    async def create(cls, listen_to: Pipe):
+        self = DiscordOutput()
 
-        # class doesn't directly use a client but does need a DiscordInput to set the channel
-        self.client = client
+        EventBusSingleton.subscribe(TextChannelConnectedEvent, self.set_channel)
+        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.send_message)
 
-        await self.event_bus.publish(Topics.System.OUTPUT_STATE, Topics.OutputStateUpdate("discord", True))
+        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.DISCORD, True))
         return self
 
-    def set_channel(self, channel: discord.TextChannel):
-        self.listeningChannel = channel
+    def set_channel(self, event: TextChannelConnectedEvent):
+        self.sendChannel = event.channel
 
-    async def send_message(self, message: str):
+    async def send_message(self, event: MessageEvent):
         # discord will throw an error if the message is empty
-        if message is None or message == "":
+        if event.message is None or not event.message.strip():
             return
 
-        if self.listeningChannel is not None:
-            await self.listeningChannel.send(message)
+        if self.sendChannel is not None:
+            await self.sendChannel.send(event.message)
