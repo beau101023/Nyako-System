@@ -59,4 +59,5 @@ class ConversationSessionProcessor(MessageReceiver):
             return params.nyako_prompt
         
     async def onStop(self, event: CommandEvent):
-        self.conversation_session.memorizeAll()
+        if params.memorize_enabled:
+            self.conversation_session.memorizeAll()
