@@ -1,19 +1,21 @@
 from abc import ABC, abstractmethod
 from io import FileIO
 
+import numpy as np
+
+from pydub import AudioSegment
+
 from overrides import override
 import torch
 import soundfile as sf
 
 from rvc_pipe.rvc_infer import rvc_convert
 
-from audio_playback import audioToBytes
-
 from params import sample_rate_out, language, model_id, speaker, device
 
 class TextToSpeech(ABC):
     @abstractmethod
-    def generate_speech(self, text: str) -> bytes | None:
+    def generate_speech(self, text: str) -> AudioSegment | None:
         """
         Generate speech from text input.
 
@@ -49,14 +51,28 @@ class SileroTTS(TextToSpeech):
         self.model.apply_tts('!my~jouyonaofj845q985:JLKJ^%:LKj', speaker=speaker, sample_rate=sample_rate_out)
 
     @override
-    def generate_speech(self, text: str) -> bytes | None:
+    def generate_speech(self, text: str) -> AudioSegment | None:
         try:
-            audio_tensor = self.model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
+            audio_tensor: torch.Tensor = self.model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
         except Exception as e:
             print("TTS failure. Error message: " + str(e) + "\n Input was: " + text)
-            return
+            return None
 
-        return audioToBytes(audio_tensor)
+        # Convert tensor to numpy array
+        audio_data_np: np.ndarray = audio_tensor.numpy()
+
+        # Scale to the range of 16-bit PCM audio
+        audio_data_np = np.int16(audio_data_np * 32767)
+
+        # Create an audio segment from the numpy array
+        audio_segment = AudioSegment(
+            audio_data_np.tobytes(),  # data
+            frame_rate=self.sample_rate,  # sample rate
+            sample_width=2,  # 16 bit
+            channels=1  # mono
+        )
+
+        return audio_segment
     
 class SileroRVC_TTS(TextToSpeech):
     def __init__(self, speaker=speaker, sample_rate=sample_rate_out, pitch_shift_semitones=4):
@@ -82,7 +98,7 @@ class SileroRVC_TTS(TextToSpeech):
         rvc_convert(model_path='nyako/rvc_voice_models/ayaka-jp_e101.pth', input_path='nyako/inference_temp/voice.wav', output_path='nyako/inference_temp/voice_conv.wav')
     
     @override
-    def generate_speech(self, text: str) -> bytes | None:
+    def generate_speech(self, text: str) -> AudioSegment | None:
         try:
             audio_tensor = self.model.apply_tts(text, speaker=self.speaker, sample_rate=self.sample_rate)
         except Exception as e:
@@ -98,9 +114,18 @@ class SileroRVC_TTS(TextToSpeech):
             f.write(audio_np)
 
         # convert with rvc
-        rvc_convert(f0_up_key=4, model_path='nyako/rvc_voice_models/ayaka-jp_e101.pth', input_path='nyako/inference_temp/voice.wav', output_path='nyako/inference_temp/voice_conv.wav')
+        rvc_convert(f0_up_key=4, resample_sr=sample_rate_out, model_path='nyako/rvc_voice_models/ayaka-jp_e101.pth', input_path='nyako/inference_temp/voice.wav', output_path='nyako/inference_temp/voice_conv.wav')
 
         with sf.SoundFile('nyako/inference_temp/voice_conv.wav', mode='r') as f:
             audio = f.read(dtype='float32')
 
-        return audioToBytes(audio)
+        # TODO determine proper conversion for audio data
+
+        audio_segment = AudioSegment(
+            audio.tobytes(),
+            sample_width=4,
+            frame_rate= sample_rate_out,
+            channels=1
+        )
+
+        return audio_segment
