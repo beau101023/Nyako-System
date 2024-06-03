@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from pydub import AudioSegment
+
 import numpy as np
 
 import whisper_at as whisper
@@ -18,7 +20,7 @@ class Transcriber(ABC):
         pass
 
     @abstractmethod
-    def transcribeSpeech(self, speechBuffer, input_gain=1.0) -> str:
+    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0) -> str:
         """
         Transcribes a section of audio data using the provided transcriber object, with the specified input gain.
 
@@ -60,26 +62,44 @@ class WhisperTranscriber(Transcriber):
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
-    def transcribeSpeech(self, speechBuffer: bytes, input_gain=1.0):
-        speechBufferNumPyArray = np.fromstring(speechBuffer, dtype=np.float32)
+    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0):
+
+        audio_segment = speechBuffer
+        audio_segment = audio_segment.set_frame_rate(16000)  # Set sampling rate to 16kHz
+        audio_segment = audio_segment.set_channels(1)        # Set to mono
+        audio_segment = audio_segment.set_sample_width(2)    # Set sample width to 16-bit (2 bytes)
+
+        # Export the audio data to raw bytes
+        audio_bytes = audio_segment.raw_data
+
+        if not isinstance(audio_bytes, bytes):
+            raise RuntimeError("AudioSegment invalid.")
+
+        # Convert the raw bytes to a numpy array of type int16
+        audio_np = np.frombuffer(audio_bytes, dtype=np.int16).flatten().astype(np.float32) / 32768.0
 
         # apply input gain
-        speechBufferNumPyArray *= input_gain
+        audio_np *= input_gain
 
         # run transcription
-        self.result = self.transcriber.transcribe(speechBufferNumPyArray, at_time_res=2, initial_prompt="Glossary: Nyako, Beau, based, ayo, cringe")
+        self.result = self.transcriber.transcribe(audio_np, at_time_res=2, initial_prompt="Glossary: Nyako, Beau, based, ayo, cringe")
 
         out_text = ""
         for segment in self.result['segments']:
             if(segment['no_speech_prob'] <= self.no_speech_probability_threshold):
                 out_text += segment['text']
 
+        if(self.supports_extra_tagging()):
+            tags = self.get_extra_tagging()
+            tags_string = ", ".join(tags)  # Convert the list of tags to a string
+            out_text = f"(Audio: {tags_string})" + out_text  # Prepend the tags to the transcript
+
         return out_text
     
     def supports_extra_tagging(self):
         return True
     
-    def get_extra_tagging(self):
+    def get_extra_tagging(self) -> list[str]:
         audio_tag_result = whisper.parse_at_label(self.result, top_k=2, p_threshold=-2)
     
         tags = set()
