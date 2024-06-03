@@ -4,19 +4,20 @@ from datetime import datetime
 from event_system import EventBusSingleton
 from event_system.events.System import TaskCreatedEvent, CommandEvent, CommandType
 from event_system.events.Pipeline import UserInputEvent, MessageEvent
-from event_system.events.Audio import SpeakingStateUpdate, AudioType, AudioDirection
+from event_system.events.Audio import SpeakingStateUpdate, AudioDirection
 
+from nyako.pipesys.MessageReciever import MessageReceiver
 from pipesys import Pipe
 
 from params import default_processor_delay
 from params import default_no_input_interval_seconds
 
-class RealtimeMessageChunker(Pipe):
+class RealtimeMessageChunker(MessageReceiver, Pipe):
     no_input_interval_seconds: int
     processor_delay: int
     
-    def __init__(self):
-        super().__init__()
+    def __init__(self, listen_to: MessageEvent | Pipe | type[MessageEvent]):
+        super().__init__(listen_to)
         self.sleeping: bool = False
         self.paused: bool = False
         self.stopped: bool = False
@@ -28,13 +29,12 @@ class RealtimeMessageChunker(Pipe):
     # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
     @classmethod
-    async def create(cls, processor_delay: int = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
-        self = RealtimeMessageChunker()
+    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent], processor_delay: int = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
+        self = RealtimeMessageChunker(listen_to)
         
         task = asyncio.create_task(self.chunk_messages())
         await EventBusSingleton.publish(TaskCreatedEvent(task, pretty_sender="Message Chunker"))
-
-        EventBusSingleton.subscribe(UserInputEvent, self.onMessage)
+        
         EventBusSingleton.subscribe(CommandEvent(CommandType.SLEEP), self.onSleep)
         EventBusSingleton.subscribe(CommandEvent(CommandType.WAKE), self.onWake)
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
