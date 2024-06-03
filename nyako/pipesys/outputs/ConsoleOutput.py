@@ -1,5 +1,4 @@
 from overrides import override
-from event_system.Event import Event
 from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
 from pipesys import OutputPipe, Pipe, MessageReceiver
@@ -20,7 +19,7 @@ class ConsoleOutput(MessageReceiver, OutputPipe):
 
         Parameters:
         event_bus (EventBus): the event bus to use
-        listen_topic (str): the topic to listen for messages on
+        listen_to (str): the event or pipe to listen to for messages
         """
 
         self = ConsoleOutput(listen_to)
