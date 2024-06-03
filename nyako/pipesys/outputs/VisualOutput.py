@@ -111,9 +111,5 @@ class VisualOutput(MessageReceiver, OutputPipe):
     async def runVisualOutput(self):
         self.window.show()
 
-        # keepalive
-        while not self.stopped:
-            await asyncio.sleep(1/30)
-
     async def onStop(self, event: CommandEvent):
-        self.stopped = True
+        self.window.close()
