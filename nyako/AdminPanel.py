@@ -23,8 +23,6 @@ class AdminPanel(MessageReceiver):
 
         self.window = QMainWindow()
 
-        self.stopped = False
-
         self.window.setWindowTitle("Admin Panel")
 
         main_panel = QWidget(self.window)
@@ -197,14 +195,10 @@ class AdminPanel(MessageReceiver):
     async def run_admin_panel(self):
         self.window.show()
         self.text_display_window.show()
-
-        # keepalive
-        while not self.stopped:
-            # 60 fps
-            await asyncio.sleep(1/30)
             
     async def onStop(self, event: CommandEvent):
-        self.stopped = True
+        self.window.close()
+        self.text_display_window.close()
 
 if __name__ == "__main__":
     import sys
