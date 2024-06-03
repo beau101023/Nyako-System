@@ -1,6 +1,8 @@
 import discord
 import asyncio
 
+from pydub import AudioSegment
+
 from io import BytesIO
 
 from TTS import TextToSpeech, SileroRVC_TTS
@@ -56,11 +58,19 @@ class DiscordVoiceOutput(OutputPipe):
 
         if audio == None:
             return
+        
+        audio = self.convert_for_output(audio).raw_data
+
+        if not isinstance(audio, bytes):
+            return
 
         audio = BytesIO(audio)
 
         await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.OUTPUT))
         self.voice_connection.play(discord.PCMAudio(audio), after= self.finishedPlayingCallback)
+
+    def convert_for_output(self, audio_segment: AudioSegment) -> AudioSegment:
+        return audio_segment.set_channels(2).set_frame_rate(48000).set_sample_width(2)
 
     def finishedPlayingCallback(self, ex: Exception | None):
         asyncio.run_coroutine_threadsafe(
