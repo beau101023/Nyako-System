@@ -2,7 +2,7 @@ import asyncio
 import discord
 from event_system.events.Discord import BotReadyEvent
 from params import DISCORD_BOT_TOKEN
-from event_system.events.System import TaskCreatedEvent
+from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 
 from event_system.EventBusSingleton import EventBusSingleton
 
@@ -21,8 +21,14 @@ class DiscordClientRunner:
         task = asyncio.create_task(self.client.start(DISCORD_BOT_TOKEN))
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Discord Client"))
 
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.on_stop)
+
         return self
     
     async def on_ready(self):
         print("Discord Bot Connected")
         await EventBusSingleton.publish(BotReadyEvent(self.client))
+
+    async def on_stop(self, event: CommandEvent):
+        await self.client.close()
+        print("Discord Bot Disconnected")
