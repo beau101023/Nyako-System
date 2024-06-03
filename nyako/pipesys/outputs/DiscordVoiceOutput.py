@@ -67,6 +67,12 @@ class DiscordVoiceOutput(OutputPipe):
         audio = BytesIO(audio)
 
         await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.OUTPUT))
+        
+        # If audio's already playing and we queue a new message, interrupt it and play the new audio instead of
+        #   building up a message backlog or anything
+        if self.voice_connection.is_playing():
+            self.voice_connection.stop()
+
         self.voice_connection.play(discord.PCMAudio(audio), after= self.finishedPlayingCallback)
 
     def convert_for_output(self, audio_segment: AudioSegment) -> AudioSegment:
