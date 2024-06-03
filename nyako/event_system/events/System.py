@@ -15,28 +15,29 @@ class CommandType(Enum):
 
     @staticmethod
     def fromString(str: str) -> 'CommandType|None':
-        return __command_event_parse_dict.get(str, None)
+        return command_event_parse_dict.get(str, None)
     
-    def toString(self) -> str|None:
-        for key, value in __command_event_parse_dict.items():
+    def toString(self) -> str:
+        for key, value in command_event_parse_dict.items():
             if self == value:
                 return key
 
-        return None
+        return ""
+ 
 
 """
 A dict mapping strings to CommandType enums.
 Meant for parsing commands sent by an LLM.
 Multiple strings map to the same command in case the LLM uses different words to refer to the same command.
-"""
-__command_event_parse_dict = {
-    "stop": CommandType.STOP,
-    "shutdown": CommandType.STOP,
-    "listen": CommandType.LISTEN,
-    "listening": CommandType.LISTEN,
-    "sleep": CommandType.SLEEP,
-    "wake": CommandType.WAKE
-}
+"""   
+command_event_parse_dict = {
+        "stop": CommandType.STOP,
+        "shutdown": CommandType.STOP,
+        "listen": CommandType.LISTEN,
+        "listening": CommandType.LISTEN,
+        "sleep": CommandType.SLEEP,
+        "wake": CommandType.WAKE
+    }
 
 @dataclass
 class CommandEvent(Event):
