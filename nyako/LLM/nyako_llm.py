@@ -97,10 +97,24 @@ class ConversationSession:
         return self._retrieve_long_term_memory()
 
     def memorize(self, messages):
-        if messages == None or len(messages) == 0:
+        if messages is None or len(messages) == 0:
             return
 
-        self._memorize_messages(messages)
+        messages_string = "\n".join([message["content"] for message in messages])
+        memory_management_input = [{"role": "user", "content": messages_string}]
+
+        if self.memory != "":
+            memory_management_input = [self.summarizeP] + [self.memory] + memory_management_input
+        else:
+            memory_management_input = [self.summarizeP] + memory_management_input
+
+        memory_response = get_response(memory_management_input, params.summarization_model)
+
+        if memory_response is None:
+            return
+
+        insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in messages]))
+        self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
     def memorizeOldest(self, num_messages):
         self._memorize_oldest_messages(num_messages)
@@ -147,21 +161,6 @@ class ConversationSession:
             aggregateText += "MEMORY " + str(count) + ": " + astext + "\n"
             count += 1
         return format_message_as_dict("user", aggregateText)
-
-    def _memorize_messages(self, messages):
-        messages_string = "\n".join([message["content"] for message in messages])
-        memory_management_input = [{"role": "user", "content": messages_string}]
-        if self.memory != "":
-            memory_management_input = [self.summarizeP] + [self.memory] + memory_management_input
-        else:
-            memory_management_input = [self.summarizeP] + memory_management_input
-        memory_response = get_response(memory_management_input, params.summarization_model)
-
-        if memory_response is None:
-            return
-
-        insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in messages]))
-        self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
     def _memorize_oldest_messages(self, num_messages):
         oldest_messages = self.messages[:num_messages]
