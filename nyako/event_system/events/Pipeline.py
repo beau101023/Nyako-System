@@ -43,22 +43,23 @@ class SystemOutputType(Enum):
 
     @staticmethod
     def fromString(str: str) -> list['SystemOutputType'] | None:
-        return __system_output_parse_dict.get(str, None)
+        return system_output_parse_dict.get(str, None)
     
-    def toString(self) -> str|None:
-        for key, value in __system_output_parse_dict.items():
+    def toString(self) -> str:
+        for key, value in system_output_parse_dict.items():
             if self in value:
                 return key
 
-        return None
-
+        return ""
+    
 """
 A dict mapping strings to SystemOutputType enums.
 Meant for parsing an LLM's intended output, so multiple strings map to the same output type
     in case it uses different words to refer to the same output.
 """
-__system_output_parse_dict = {
-    "voice": [SystemOutputType.VOICE, SystemOutputType.DISCORD_VOICE],
+system_output_parse_dict = {
+    "voice": [SystemOutputType.VOICE],
+    "discord_voice": [SystemOutputType.DISCORD_VOICE],
     "discord": [SystemOutputType.DISCORD],
     "console": [SystemOutputType.CONSOLE],
     "twitch": [SystemOutputType.TWITCH],
