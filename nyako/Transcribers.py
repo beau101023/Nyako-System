@@ -5,7 +5,6 @@ from pydub import AudioSegment
 import numpy as np
 
 import whisper_at as whisper
-from ocotillo.api import Transcriber as OcotilloSTT
 
 from params import device
 from params import INPUT_SAMPLING_RATE
@@ -13,7 +12,7 @@ from params import INPUT_SAMPLING_RATE
 from threading import Thread
 from queue import Queue
 
-from typing import List
+from typing import List, Type, Dict
 
 class Transcriber(ABC):
     def __init__(self):
@@ -65,7 +64,7 @@ class WhisperTranscriber(Transcriber):
     def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0):
 
         audio_segment = speechBuffer
-        audio_segment = audio_segment.set_frame_rate(16000)  # Set sampling rate to 16kHz
+        audio_segment = audio_segment.set_frame_rate(INPUT_SAMPLING_RATE)  # Set sampling rate to 16kHz
         audio_segment = audio_segment.set_channels(1)        # Set to mono
         audio_segment = audio_segment.set_sample_width(2)    # Set sample width to 16-bit (2 bytes)
 
@@ -108,34 +107,6 @@ class WhisperTranscriber(Transcriber):
                 tags.add(segment_tuple[0])  # Extract the tag from the tuple
     
         return list(tags)  # Convert the set to a list
-
-class OcotilloTranscriber(Transcriber):
-    def __init__(self):
-        self.transcriber = OcotilloSTT(on_cuda=device == 'cuda')
-
-    def transcribeSpeech(self, speechBuffer, input_gain=1.0):
-        speechBufferNumPyArray = np.fromstring(speechBuffer, dtype=np.float32)
-
-        # apply input gain
-        speechBufferNumPyArray *= input_gain
-
-        # returns decoded text
-        return self.transcriber.transcribe(speechBufferNumPyArray, sample_rate=INPUT_SAMPLING_RATE)
-    
-    def supports_extra_tagging(self):
-        return False
-    
-    def get_extra_tagging(self):
-        return []
-    
-    def supports_speech_probability(self):
-        return False
-    
-    def get_speech_probability(self) -> float:
-        return 0.0
-
-from typing import Type
-from typing import Dict
 
 # transcriber object pool to avoid the overhead of spinning up a new transcriber on demand
 #  one transcriber is required for every audio stream because transcribers may be stateful
