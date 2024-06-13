@@ -74,7 +74,7 @@ class UserInputEvent(MessageEvent):
     message: str|None = None
     user_input_type: SystemInputType|None = None
     user_name: str|None = None
-    priority: int = -1
+    priority: int = 0
 
     def __str__(self) -> str:
         if not self.message:
