@@ -88,10 +88,9 @@ class WhisperTranscriber(Transcriber):
             if(segment['no_speech_prob'] <= self.no_speech_probability_threshold):
                 out_text += segment['text']
 
-        if(self.supports_extra_tagging()):
-            tags = self.get_extra_tagging()
-            tags_string = ", ".join(tags)  # Convert the list of tags to a string
-            out_text = f"(Audio: {tags_string})" + out_text  # Prepend the tags to the transcript
+        tags = self.get_extra_tagging()
+        tags_string = ", ".join(tags)  # Convert the list of tags to a string
+        out_text = f"(Audio: {tags_string})" + out_text  # Prepend the tags to the transcript
 
         return out_text
     
