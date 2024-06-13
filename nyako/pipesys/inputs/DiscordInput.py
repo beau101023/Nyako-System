@@ -5,7 +5,7 @@ from event_system.events.Pipeline import SystemInputType, UserInputEvent
 from event_system.events.System import CommandEvent, CommandType, StartupStage, StartupEvent
 from event_system.events.System import StartupStage
 
-from event_system.events.Discord import TextChannelConnectedEvent
+from event_system.events.Discord import BotReadyEvent, TextChannelConnectedEvent
 from pipesys import Pipe
 
 class DiscordInput(Pipe):
@@ -15,33 +15,31 @@ class DiscordInput(Pipe):
         self.listeningChannel: discord.abc.MessageableChannel | None = None
 
     @classmethod
-    async def create(cls, client: discord.Client):
+    async def create(cls):
         self = DiscordInput()
-        self.client = client
 
         # a part of the 'discord' package, separate from the event system which uses EventBus
-        client.event(self.onMessage)
-
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
-        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
+
+        EventBusSingleton.subscribe(TextChannelConnectedEvent, self.onTextChannelConnect)
+
+        EventBusSingleton.subscribe(BotReadyEvent, self.onBotReady)
 
         return self
+    
+    async def onTextChannelConnect(self, event: TextChannelConnectedEvent):
+        self.listeningChannel = event.channel
 
-    async def onWarmup(self, event: StartupEvent):
-        if(self.listeningChannel == None):
-            await EventBusSingleton.publish(CommandEvent(CommandType.SLEEP))
+    async def onBotReady(self, event: BotReadyEvent):
+        self.client = event.client
+        self.client.event(self.on_message)
 
-    async def onMessage(self, message: discord.Message):
-        if self.client.user == None:
+    async def on_message(self, message: discord.Message):
+        if not self.client.user:
             return
 
         if message.author.id == self.client.user.id:
             return
-
-        if(self.listeningChannel == None):
-            self.listeningChannel = message.channel
-
-            await EventBusSingleton.publish(TextChannelConnectedEvent(self.listeningChannel))
 
         if(message.channel != self.listeningChannel):
             return
