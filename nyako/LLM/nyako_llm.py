@@ -6,7 +6,6 @@ from params import CLIENT_INSTANCE as client
 from vectordb.nyako_ltm import insertToMemory
 from vectordb.nyako_ltm import retrieveMemoriesWithContext
 
-
 def get_response(messages, model=params.chat_model):
 
     if messages == None:
@@ -22,12 +21,11 @@ def get_response(messages, model=params.chat_model):
 
     return response.choices[0].message.content
 
-
-def format_message_as_dict(role, message):
+def format_message_as_dict(role: str, message: str) -> dict[str,str]:
 
     return {"role": role, "content": message}
 
-def message_dict_to_string(message):
+def message_dict_to_string(message: dict[str, str]) -> str:
         return message["role"] + ": " + message["content"]
 
 
@@ -71,7 +69,7 @@ class ConversationSession:
     def __init__(self, systemP=params.nyako_prompt, summarizeP=params.summarize_prompt):
         self.systemP = format_message_as_dict("system", systemP)
         self.summarizeP = format_message_as_dict("system", summarizeP)
-        self.messages = []
+        self.current_context_messages: list[dict[str,str]] = []
         self.memory = {}
 
     def query(self, message: str) -> str:
@@ -81,17 +79,24 @@ class ConversationSession:
         if not response:
             return ""
 
-        self._handle_response(response)
+        self._process_and_store_response(response)
         return response
 
-    def updateSystemPrompt(self, newPrompt):
+    def updateSystemPrompt(self, newPrompt: str):
         self.systemP = format_message_as_dict("system", newPrompt)
 
     def mostRecentMessage(self) -> dict:
-        return self.messages[-1]
+        return self.current_context_messages[-1]
 
     def getContext(self) -> list:
-        return self._build_context()
+        context = [self.systemP]
+        ltm = self.getLongTermMemory()
+        if ltm:
+            context.append(ltm)
+        if self.memory:
+            context.append(self.memory)
+        context += self.current_context_messages
+        return context
 
     def getLongTermMemory(self):
         return self._retrieve_long_term_memory()
@@ -117,35 +122,27 @@ class ConversationSession:
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
     def memorizeOldest(self, num_messages):
-        self._memorize_oldest_messages(num_messages)
+        oldest_messages = self.current_context_messages[:num_messages]
+        self.memorize(oldest_messages)
+        self.current_context_messages = self.current_context_messages[num_messages:]
 
     def memorizeAll(self):
-        self._memorize_all_messages()
+        self.memorize(self.current_context_messages)
+        self.current_context_messages = []
 
     def _add_message_to_history(self, message):
         timeString = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
-        self.messages.append(format_message_as_dict("user", timeString + message))
-        print(self.getContext())
+        self.current_context_messages.append(format_message_as_dict("user", timeString + message))
 
     def _get_response_from_model(self):
         return get_response(self.getContext())
 
-    def _handle_response(self, response):
-        if(response.startswith("[listening]")):
-            response = "[listening]"
-        self.messages.append(format_message_as_dict("assistant", response))
-        if(len(self.messages) > params.messages_count_before_summarization and params.memorize_enabled):
+    def _process_and_store_response(self, response: str) -> None:
+        self.current_context_messages.append(format_message_as_dict("assistant", response))
+        if(len(self.current_context_messages) > params.max_context_len and params.memorize_enabled):
             self.memorizeOldest(params.num_messages_to_summarize)
-
-    def _build_context(self):
-        context = [self.systemP]
-        ltm = self.getLongTermMemory()
-        if ltm:
-            context.append(ltm)
-        if self.memory:
-            context.append(self.memory)
-        context += self.messages
-        return context
+        else:
+            self.current_context_messages = self.current_context_messages[-params.max_context_len:]
 
     def _retrieve_long_term_memory(self):
         memoryChunks = retrieveMemoriesWithContext(self.mostRecentMessage()["content"], params.ltm_retrieval_count, params.ltm_context_size)
@@ -161,12 +158,3 @@ class ConversationSession:
             aggregateText += "MEMORY " + str(count) + ": " + astext + "\n"
             count += 1
         return format_message_as_dict("user", aggregateText)
-
-    def _memorize_oldest_messages(self, num_messages):
-        oldest_messages = self.messages[:num_messages]
-        self.memorize(oldest_messages)
-        self.messages = self.messages[num_messages:]
-
-    def _memorize_all_messages(self):
-        self.memorize(self.messages)
-        self.messages = []
