@@ -68,7 +68,7 @@ class RealtimeMessageChunker(MessageReceiver, Pipe):
             await asyncio.sleep(1)
 
         # send any remaining messages
-        if len(self.event_queue) > 0:
+        if self.messages_queued():
             await self.process_messages()
 
     def seconds_since_last_idle_response(self) -> float:
@@ -106,7 +106,7 @@ class RealtimeMessageChunker(MessageReceiver, Pipe):
             return
 
         # don't add if `event` has a lower priority than other queued events
-        if event.priority is not None and self.queue_max_priority() > event.priority:
+        if self.queue_max_priority() > event.priority:
             return
 
         # past this point, we're actually queueing events, so wake up
@@ -114,7 +114,7 @@ class RealtimeMessageChunker(MessageReceiver, Pipe):
             await EventBusSingleton.publish(CommandEvent(CommandType.WAKE))
 
         # if `event` has a higher priority than all queued events, clear queue and add
-        if event.priority is not None and self.queue_max_priority() < event.priority:
+        if self.queue_max_priority() < event.priority:
             self.event_queue = []
             self.event_queue.append(event)
             return
