@@ -57,7 +57,7 @@ class WhisperTranscriber(Transcriber):
         Parameters:
         no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
         """
-        self.transcriber = whisper.load_model("base", device=device, in_memory=True)
+        self.transcriber = whisper.load_model("small.en", device=device, in_memory=True)
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
