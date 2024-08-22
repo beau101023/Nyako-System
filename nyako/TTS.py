@@ -62,7 +62,7 @@ class SileroTTS(TextToSpeech):
         audio_data_np: np.ndarray = audio_tensor.numpy()
 
         # Scale to the range of 16-bit PCM audio
-        audio_data_np = np.int16(audio_data_np * 32767)
+        audio_data_np = np.int16(audio_data_np * 32767) # type: ignore
 
         # Create an audio segment from the numpy array
         audio_segment = AudioSegment(
