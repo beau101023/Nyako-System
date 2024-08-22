@@ -1,5 +1,6 @@
 ocotillo
 vectordb/workspace_path
+logs/
 OpenAI_Finetuning/nyako_data_repack.jsonl
 nyako/rvc_pipe
 nyako/vectordb/workspace_path
