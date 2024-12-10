@@ -36,8 +36,8 @@ class FileLogger(OutputPipe, MessageReceiver):
 
         EventBusSingleton.subscribe(UserInputEvent, self.onMessage)
 
-        async with aiofiles.open(self.logfile_path, mode='w') as logfile:
-            await logfile.write(f"system: {nyako_prompt}\n")
+        async with aiofiles.open(self.logfile_path, mode='w', encoding='utf-8') as logfile:
+            await logfile.write(f"system: {nyako_prompt}")
 
         return self
 
@@ -60,11 +60,6 @@ class FileLogger(OutputPipe, MessageReceiver):
         else:
             sender_name = "assistant"
 
-        file_exists = os.path.exists(self.logfile_path)
-        file_empty = file_exists and os.path.getsize(self.logfile_path) == 0
-
-        async with aiofiles.open(self.logfile_path, mode='a') as logfile:
-            # Add a newline between every message, without adding a newline at file start.
-            if not file_empty:
-                await logfile.write("\n")
-            await logfile.write(f"{sender_name}: {str(event)}")
+        async with aiofiles.open(self.logfile_path, mode='a', encoding='utf-8') as logfile:
+            # Add a newline between every message.
+            await logfile.write(f"\n{sender_name}: {str(event)}")
