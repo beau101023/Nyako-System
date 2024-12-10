@@ -14,7 +14,7 @@ from params import default_no_input_interval_seconds
 
 class RealtimeMessageChunker(MessageReceiver, Pipe):
     no_input_interval_seconds: int
-    processor_delay: int
+    processor_delay: float
     
     def __init__(self, listen_to: MessageEvent | Pipe | type[MessageEvent]):
         super().__init__(listen_to)
@@ -29,7 +29,7 @@ class RealtimeMessageChunker(MessageReceiver, Pipe):
     # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
     @classmethod
-    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent], processor_delay: int = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
+    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent], processor_delay: float = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
         self = RealtimeMessageChunker(listen_to)
         
         task = asyncio.create_task(self.chunk_messages())
