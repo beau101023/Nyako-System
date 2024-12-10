@@ -95,9 +95,6 @@ class VisualOutput(MessageReceiver, OutputPipe):
         # Get the emotion from the response
         emotion = response.choices[0].message.content
 
-        # debug
-        print(emotion)
-
         return emotion
     
     def setEmote(self, path: str):
