@@ -40,6 +40,7 @@ class DiscordVoiceInput(Pipe):
         self.speechRecordingTriggeredByUser = {}
         self.speechBufferByUser = {}
         self.inputGain = 1.0
+        self.speech_timeout = 1.2
 
         self.stopped = False
 
@@ -102,7 +103,7 @@ class DiscordVoiceInput(Pipe):
 
                     self.noSpeechTimeByUser[user_id] += 0.03
 
-                    if self.noSpeechTimeByUser[user_id] >= 1:
+                    if self.noSpeechTimeByUser[user_id] >= self.speech_timeout:
                         self.speechRecordingTriggeredByUser[user_id] = False
 
                         print("{0} stopped speaking".format(user_str))
