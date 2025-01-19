@@ -1,4 +1,3 @@
-from argparse import ArgumentError
 import torch
 import numpy as np
 import pydub
@@ -13,8 +12,10 @@ from params import INPUT_SAMPLING_RATE
 def detectVoiceActivity(buf) -> float:
     if isinstance(buf, torch.Tensor):
         return VAD(buf, INPUT_SAMPLING_RATE).item()
+    
     elif isinstance(buf, (bytes,bytearray)):
         return VAD(torch.from_numpy(np.frombuffer(buf, dtype=np.float32)), INPUT_SAMPLING_RATE).item()
+    
     elif isinstance(buf, pydub.AudioSegment):
         # Convert the AudioSegment to 16kHz, mono, 16-bit little-endian PCM format
         audio_segment = buf
