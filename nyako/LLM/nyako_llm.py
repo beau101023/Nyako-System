@@ -6,7 +6,7 @@ from params import CLIENT_INSTANCE as client
 from vectordb.nyako_ltm import insertToMemory
 from vectordb.nyako_ltm import retrieveMemoriesWithContext
 
-def get_response(messages, model=params.chat_model):
+def get_response(messages, model=params.nyako_model):
 
     if messages == None:
         raise ValueError("messages cannot be None")
