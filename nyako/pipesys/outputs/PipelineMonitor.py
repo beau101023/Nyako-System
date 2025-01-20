@@ -28,4 +28,7 @@ class PipelineMonitor(Pipe):
 
         sender_name = event.sender.__class__.__name__
 
-        print(f"{sender_name}: {str(event)}")
+        try:
+            print(f"{sender_name}: {str(event)}")
+        except:
+            print("[Unprintable message event.]")
