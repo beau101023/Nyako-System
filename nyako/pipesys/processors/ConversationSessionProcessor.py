@@ -1,6 +1,7 @@
 from LLM.nyako_llm import ConversationSession
 from pipesys import Pipe, MessageSource
 import params
+import openai
 
 from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, OutputDeliveryEvent, SystemOutputType
@@ -34,8 +35,11 @@ class ConversationSessionProcessor(Pipe):
         return self
 
     async def onMessage(self, event: MessageEvent):
-        async for response_chunk in self.conversation_session.stream_query(str(event), self.buffer_size):
-            await EventBusSingleton.publish(MessageEvent(response_chunk, self))
+        try:
+            async for response_chunk in self.conversation_session.stream_query(str(event), self.buffer_size):
+                await EventBusSingleton.publish(MessageEvent(response_chunk, self))
+        except openai.APIError as e:
+            print(e.message)
         self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
 
     async def onOutputDelivered(self, event: MessageEvent):
