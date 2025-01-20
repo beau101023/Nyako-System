@@ -1,4 +1,3 @@
-from overrides import override
 from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
 from pipesys import Pipe, MessageSource

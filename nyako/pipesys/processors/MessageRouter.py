@@ -5,7 +5,7 @@ from pipesys import Pipe
 
 from params import debug_mode
 
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputMessageEvent
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputRoutingEvent
 from event_system.events.System import CommandEvent, CommandAvailabilityEvent, CommandType
 from event_system.events.LLMOutput import InvalidTagEvent, InactiveOutputEvent, InactiveCommandEvent, NoTagsEvent
 
@@ -106,9 +106,9 @@ class MessageRouter(Pipe):
         for output_type in output_types:
             if output_type in self.active_outputs:
                 if debug_mode:
-                    await EventBusSingleton.publish(OutputMessageEvent(message, self, SystemOutputType.ALL))
+                    await EventBusSingleton.publish(OutputRoutingEvent(message, self, SystemOutputType.ALL))
                 else:
-                    await EventBusSingleton.publish(OutputMessageEvent(message, self, output_type))
+                    await EventBusSingleton.publish(OutputRoutingEvent(message, self, output_type))
             else:
                 await EventBusSingleton.publish(InactiveOutputEvent(message, output_type))
 

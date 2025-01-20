@@ -1,6 +1,5 @@
 import asyncio
 import os
-from overrides import override
 
 from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget
 from PyQt5.QtGui import QPixmap

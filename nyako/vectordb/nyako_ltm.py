@@ -1,5 +1,6 @@
 import numpy as np
 
+from typing import List
 from docarray.index.backends.hnswlib import HnswDocumentIndex
 from docarray import DocList
 from vectordb.data_schema import MemoryMessage
