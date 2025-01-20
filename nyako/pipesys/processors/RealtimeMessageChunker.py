@@ -41,8 +41,6 @@ class RealtimeMessageChunker(Pipe):
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
         EventBusSingleton.subscribe(SpeakingStateUpdate(audio_direction=AudioDirection.INPUT), self.onUserSpeakingStateUpdate)
 
-        # TODO make sure the LLM gets error feedback by subscribing to the LLMOutput events as well
-
         self.no_input_interval_seconds = no_input_interval_seconds
         self.processor_delay = processor_delay
 
