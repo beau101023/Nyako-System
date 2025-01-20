@@ -13,13 +13,14 @@ class ConversationSessionProcessor(Pipe):
 
     def __init__(self, listen_to: MessageSource | list[MessageSource], track_outputs_from: MessageSource, buffer_size=10):
         super().__init__()
+        self.buffer_size = buffer_size
 
         self.subscribeAll(listen_to, self.onMessage)
         self.subscribeAll(track_outputs_from, self.onOutputDelivered)
 
     @classmethod
-    async def create(cls, listen_to: MessageEvent | Pipe | list[MessageSource], track_LLM_outputs_from: MessageSource = OutputDeliveryEvent, buffer_size=10):
-        self = ConversationSessionProcessor(listen_to)
+    async def create(cls, listen_to: MessageSource | list[MessageSource], track_LLM_outputs_from: MessageSource = OutputDeliveryEvent, buffer_size=10):
+        self = ConversationSessionProcessor(listen_to, track_LLM_outputs_from, buffer_size)
 
         EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputsChange)
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
@@ -32,13 +33,9 @@ class ConversationSessionProcessor(Pipe):
 
         return self
 
-    @override
     async def onMessage(self, event: MessageEvent):
-        # this blocks the event loop, but we want to pause processing until we get a response anyway
-        response = self.conversation_session.query(str(event))
-
-        await EventBusSingleton.publish(MessageEvent(response, self))
-
+        async for response_chunk in self.conversation_session.stream_query(str(event), self.buffer_size):
+            await EventBusSingleton.publish(MessageEvent(response_chunk, self))
         self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
 
     async def onOutputDelivered(self, event: MessageEvent):
@@ -67,4 +64,4 @@ class ConversationSessionProcessor(Pipe):
         
     async def onStop(self, event: CommandEvent):
         if params.memorize_enabled:
-            self.conversation_session.memorizeAll()
+            await self.conversation_session.memorizeAll()
