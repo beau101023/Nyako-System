@@ -122,7 +122,6 @@ class ConversationSession:
         if not response:
             return ""
 
-        self._process_and_store_response(response)
         return response
 
     def updateSystemPrompt(self, newPrompt: str):

@@ -1,4 +1,5 @@
 import threading
+import asyncio
 
 from TTS import TextToSpeech, SileroRVC_TTS
 
@@ -46,7 +47,7 @@ class TextToSpeechOutput:
             return
         
         # avoid blocking with speech output processing
-        thread = threading.Thread(target=self.say, args=(msg,))
+        thread = threading.Thread(target=self.say, args=(msg,asyncio.get_event_loop()))
         thread.start()
 
     async def onVolumeUpdate(self, event: VolumeUpdatedEvent):
@@ -55,13 +56,17 @@ class TextToSpeechOutput:
 
         self.audio_player.set_volume(event.volume)
 
-    def say(self, text):
+    def say(self, text, loop):
         audio = self.speech_to_text.generate_speech(text)
 
         if audio == None:
             return
 
         self.audio_player.play_audio(audio)
+        asyncio.run_coroutine_threadsafe(
+            EventBusSingleton.publish(OutputDeliveryEvent(message=text, sender=self)),
+            loop
+        )
 
     def onWarmup(self, event: StartupEvent):
         self.speech_to_text.warmup()

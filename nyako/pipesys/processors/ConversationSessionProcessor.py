@@ -42,6 +42,10 @@ class ConversationSessionProcessor(MessageReceiver):
 
         self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
 
+    async def onOutputDelivered(self, event: MessageEvent):
+        if(event.message):
+            await self.conversation_session.addLLMMessageToContext(event.message)
+
     async def onOutputsChange(self, event: OutputAvailabilityEvent):
         
         if not event.output_type in self.available_outputs and not event.output_available:

@@ -2,8 +2,7 @@ import discord
 from event_system.EventBusSingleton import EventBusSingleton
 
 from event_system.events.Discord import TextChannelConnectedEvent
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
-from pipesys.MessageReciever import MessageReceiver
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputDeliveryEvent
 from pipesys import Pipe, OutputPipe
 
 class DiscordOutput(MessageReceiver, OutputPipe):
@@ -30,3 +29,4 @@ class DiscordOutput(MessageReceiver, OutputPipe):
 
         if self.sendChannel is not None:
             await self.sendChannel.send(event.message)
+            await EventBusSingleton.publish(OutputDeliveryEvent(message=event.message, sender=self))
