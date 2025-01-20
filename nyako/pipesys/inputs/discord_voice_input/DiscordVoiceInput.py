@@ -45,9 +45,13 @@ class DiscordVoiceInput(Pipe):
         self.stopped = False
 
     @classmethod
-    async def create(cls, transcriber: Transcriber = WhisperTranscriber()) -> 'DiscordVoiceInput':
+    async def create(cls, transcriber: Transcriber | None) -> 'DiscordVoiceInput':
         self = DiscordVoiceInput()
-        self.transcriber = transcriber
+
+        if(transcriber):
+            self.transcriber = transcriber
+        else:
+            self.transcriber = WhisperTranscriber()
 
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
         EventBusSingleton.subscribe(VolumeUpdatedEvent(None, AudioType.DISCORD, AudioDirection.INPUT), self.onInputVolumeUpdate)

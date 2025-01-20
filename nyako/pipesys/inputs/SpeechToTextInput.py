@@ -27,7 +27,7 @@ class SpeechToTextInput(Pipe):
         self.asyncio_main_loop = asyncio.get_event_loop()
 
     @classmethod
-    async def create(cls, transcriber: Transcriber= WhisperTranscriber()):
+    async def create(cls, transcriber: Transcriber | None):
         """
         Creates an instance of the SpeechToTextInput module.
 
@@ -41,7 +41,10 @@ class SpeechToTextInput(Pipe):
         """
         self = SpeechToTextInput()
 
-        self.transcriber = transcriber
+        if(transcriber):
+            self.transcriber = transcriber
+        else:
+            self.transcriber = WhisperTranscriber()
 
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
         EventBusSingleton.subscribe(
