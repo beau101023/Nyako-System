@@ -85,14 +85,14 @@ class DiscordVoiceInput(Pipe):
                 user_str = str(user_id)
 
                 if isSpeakingProbability > speech_sensitivity_threshold and not self.speechRecordingTriggeredByUser.get(user_id, False):
-                    self.speechRecordingTriggeredByUser[user_id] = True
-
-                    print("{0} started speaking".format(user_str))
-
                     # check if this is the first user to speak
                     if not any(self.speechRecordingTriggeredByUser.values()):
                         # if so, notify that user speech has started
                         await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.INPUT))
+                        
+                    self.speechRecordingTriggeredByUser[user_id] = True
+
+                    print("{0} started speaking".format(user_str))
 
                 if self.speechRecordingTriggeredByUser.get(user_id, False):
                     # initialize speech buffer for user if it doesn't exist
