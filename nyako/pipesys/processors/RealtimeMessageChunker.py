@@ -52,7 +52,7 @@ class RealtimeMessageChunker(Pipe):
         self.last_input_time = datetime.now()
         while not self.stopped:
             if self.sleeping or self.paused:
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.1)
                 continue
 
             if self.messages_queued() and self.user_inactivity_seconds() > self.processor_delay:
@@ -66,7 +66,7 @@ class RealtimeMessageChunker(Pipe):
                   self.seconds_since_last_idle_response() > self.no_input_interval_seconds):
                 await self.send_no_input_message()
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
 
         # send any remaining messages
         if self.messages_queued():
