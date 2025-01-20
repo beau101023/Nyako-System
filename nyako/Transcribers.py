@@ -54,7 +54,7 @@ class WhisperTranscriber(Transcriber):
         Parameters:
         no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
         """
-        self.transcriber = whisper.load_model("small.en", device=device, in_memory=True)
+        self.transcriber = whisper.load_model("medium.en", device=device, in_memory=True)
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
@@ -78,7 +78,7 @@ class WhisperTranscriber(Transcriber):
         audio_np *= input_gain
 
         # run transcription
-        self.result = self.transcriber.transcribe(audio_np, at_time_res=2, initial_prompt="Glossary: Nyako, Beau, based, ayo, cringe")
+        self.result = self.transcriber.transcribe(audio_np, at_time_res=10, initial_prompt="Hey Nyako")
 
         out_text = ""
         for segment in self.result['segments']:
