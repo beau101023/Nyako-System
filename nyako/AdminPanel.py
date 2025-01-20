@@ -12,12 +12,11 @@ from event_system.events.System import CommandEvent, CommandType, CommandAvailab
 from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent
 from event_system.events.Discord import BotReadyEvent, TextChannelConnectedEvent, VoiceChannelConnectedEvent
-from pipesys.MessageReciever import MessageReceiver
-from pipesys import Pipe
+from pipesys import Pipe, MessageSource
 
-class AdminPanel(MessageReceiver):
-    def __init__(self, listen_to):
-        super().__init__(listen_to)
+class AdminPanel(Pipe):
+    def __init__(self, listen_to: MessageSource):
+        super().__init__()
 
         self.default_volume = 20
 
@@ -36,8 +35,10 @@ class AdminPanel(MessageReceiver):
 
         self.create_text_display()
 
+        self.subscribeAll(listen_to, self.onMessage)
+
     @classmethod
-    async def create(cls, listen_to: MessageEvent|type[MessageEvent]|Pipe) -> 'AdminPanel':
+    async def create(cls, listen_to: MessageSource) -> 'AdminPanel':
         self = AdminPanel(listen_to)
 
         task = asyncio.create_task(self.run_admin_panel())
@@ -188,7 +189,6 @@ class AdminPanel(MessageReceiver):
         # Handle command trigger here
         asyncio.create_task(EventBusSingleton.publish(CommandEvent(command_type)))
 
-    @override
     def onMessage(self, event: MessageEvent):
         self.update_text_display(event.message)
 

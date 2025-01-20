@@ -2,17 +2,17 @@ import asyncio
 import os
 from overrides import override
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
-from event_system import Event, EventBusSingleton
+from event_system import EventBusSingleton
 from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 from event_system.events.Pipeline import MessageEvent
-from pipesys import MessageReceiver, OutputPipe, Pipe
+from pipesys import Pipe, MessageSource
 from params import ASYNCOPENAI as client
 
-class VisualOutput(MessageReceiver, OutputPipe):
+class VisualOutput(Pipe):
     """
     Provides a visual complement to other outputs.
     Current implementation is a simple window that displays emotion images based on sentiment analysis of the conversation.
@@ -20,9 +20,9 @@ class VisualOutput(MessageReceiver, OutputPipe):
 
     stopped: bool = False
 
-    def __init__(self, parent, listen_to):
+    def __init__(self, parent, listen_to: MessageSource):
         self.window = QMainWindow(parent)
-        MessageReceiver.__init__(self, listen_to)
+        super().__init__()
 
         self.window.setWindowTitle("nyako")
         self.window.setGeometry(0, 0, 500, 600)
@@ -43,8 +43,10 @@ class VisualOutput(MessageReceiver, OutputPipe):
         self.setEmote("nyako/images/neutral.png")
         self.setText("[listening]")
 
+        self.subscribeAll(listen_to, self.onMessage)
+
     @classmethod
-    async def create(cls, listen_to: Event|Pipe|type[Event], parent=None):
+    async def create(cls, listen_to: MessageSource, parent=None):
         """
         Creates an instance of the VisualOutput module.
 
@@ -62,7 +64,6 @@ class VisualOutput(MessageReceiver, OutputPipe):
         
         return self
 
-    @override
     async def onMessage(self, event: MessageEvent):
         if event.message == None or self.stopped:
             return

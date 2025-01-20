@@ -9,13 +9,13 @@ from audio_playback import PyAudioPlayer
 
 from event_system import EventBusSingleton
 from event_system.events.System import StartupEvent, StartupStage
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputDeliveryEvent
 from event_system.events.Audio import AudioDirection, VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
 
-from pipesys import Pipe
+from pipesys import Pipe, MessageSource
 
 
-class TextToSpeechOutput:
+class TextToSpeechOutput(Pipe):
     speech_to_text: TextToSpeech
     audio_player: Audio_Player
 
@@ -23,7 +23,7 @@ class TextToSpeechOutput:
         self.volume: float = 1.0
 
     @classmethod
-    async def create(cls, listen_to: Pipe, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
+    async def create(cls, listen_to: MessageSource, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
         self = TextToSpeechOutput()
 
         self.speech_to_text = speech_to_text
@@ -31,7 +31,7 @@ class TextToSpeechOutput:
 
         # subscribe to events
         EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
-        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.onMessage)
+        self.subscribeAll(listen_to, self.onMessage)
         EventBusSingleton.subscribe(VolumeUpdatedEvent(audio_type=AudioType.SYSTEM, audio_direction=AudioDirection.OUTPUT), self.onVolumeUpdate)
 
         # notify system that tts is ready

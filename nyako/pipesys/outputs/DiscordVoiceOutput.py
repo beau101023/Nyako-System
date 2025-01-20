@@ -29,14 +29,14 @@ class DiscordVoiceOutput(OutputPipe):
         self.asyncio_main_loop = asyncio.get_event_loop()
 
     @classmethod
-    async def create(cls, listen_to: Pipe, speech_to_text: TextToSpeech=SileroRVC_TTS()):
+    async def create(cls, listen_to: MessageSource, speech_to_text: TextToSpeech=SileroTTS()):
         self = DiscordVoiceOutput()
 
         self.text_to_speech = speech_to_text
 
         EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
-        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.handleMessage)
+        self.subscribeAll(listen_to, self.handleMessage)
 
         return self
     

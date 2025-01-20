@@ -1,23 +1,24 @@
 from overrides import override
 from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
-from pipesys import OutputPipe, Pipe, MessageReceiver
+from pipesys import Pipe, MessageSource
 
 
-class PipelineMonitor(MessageReceiver, OutputPipe):
+class PipelineMonitor(Pipe):
 
-    def __init__(self, listen_to):
-        super().__init__(listen_to)
+    def __init__(self, listen_to: MessageSource):
+        super().__init__()
+
+        self.subscribeAll(listen_to, self.onMessage)
 
     @classmethod
-    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent]):
+    async def create(cls, listen_to: MessageSource):
 
         self = PipelineMonitor(listen_to)
         await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.CONSOLE, True))
 
         return self
 
-    @override
     async def onMessage(self, event: MessageEvent):
         """
         Outputs a message to the console asynchonously.

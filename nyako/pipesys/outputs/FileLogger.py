@@ -1,14 +1,12 @@
 import os
 import aiofiles
 from datetime import datetime
-from overrides import override
 from event_system import EventBusSingleton
-from event_system.events.Pipeline import MessageEvent, OutputMessageEvent, UserInputEvent
-from nyako.pipesys.MessageReciever import MessageReceiver
-from pipesys.Pipe import OutputPipe, Pipe
+from event_system.events.Pipeline import MessageEvent, UserInputEvent
+from pipesys import Pipe, MessageSource
 from params import nyako_prompt
 
-class FileLogger(OutputPipe, MessageReceiver):
+class FileLogger(Pipe):
     """
     Module that logs messages to a file.
     Automatically listens to all UserInputEvent.
@@ -23,12 +21,14 @@ class FileLogger(OutputPipe, MessageReceiver):
     assistant: <message>
     """
 
-    def __init__(self, listen_to):
-        super().__init__(listen_to)
+    def __init__(self, listen_to: MessageSource | list[MessageSource]):
+        super().__init__()
 
         # Replace colons and spaces with underscores
         self.logfile_path = ("logs/log" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".txt")
         os.makedirs(os.path.dirname(self.logfile_path), exist_ok=True)
+
+        self.subscribeAll(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: MessageEvent|Pipe|type[MessageEvent]):
@@ -41,7 +41,6 @@ class FileLogger(OutputPipe, MessageReceiver):
 
         return self
 
-    @override
     async def onMessage(self, event: MessageEvent):
         """
         Logs received messages to a file.

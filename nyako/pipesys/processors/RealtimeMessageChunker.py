@@ -6,18 +6,17 @@ from event_system.events.System import TaskCreatedEvent, CommandEvent, CommandTy
 from event_system.events.Pipeline import UserInputEvent, MessageEvent
 from event_system.events.Audio import SpeakingStateUpdate, AudioDirection
 
-from nyako.pipesys.MessageReciever import MessageReceiver
-from pipesys import Pipe
+from pipesys import Pipe, MessageSource
 
 from params import default_processor_delay
 from params import default_no_input_interval_seconds
 
-class RealtimeMessageChunker(MessageReceiver, Pipe):
+class RealtimeMessageChunker(Pipe):
     no_input_interval_seconds: int
     processor_delay: float
     
-    def __init__(self, listen_to: MessageEvent | Pipe | type[MessageEvent]):
-        super().__init__(listen_to)
+    def __init__(self, listen_to: MessageSource):
+        super().__init__()
         self.sleeping: bool = False
         self.paused: bool = False
         self.stopped: bool = False
@@ -26,10 +25,12 @@ class RealtimeMessageChunker(MessageReceiver, Pipe):
         self.event_queue: list[UserInputEvent] = []
         self.last_no_input_sent_time: datetime = datetime.now()
 
+        self.subscribeAll(listen_to, self.onMessage)
+
     # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
     @classmethod
-    async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent], processor_delay: float = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
+    async def create(cls, listen_to: MessageSource, processor_delay: float = default_processor_delay, no_input_interval_seconds: int = default_no_input_interval_seconds):
         self = RealtimeMessageChunker(listen_to)
         
         task = asyncio.create_task(self.chunk_messages())

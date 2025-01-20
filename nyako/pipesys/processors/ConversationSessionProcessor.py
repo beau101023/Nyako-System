@@ -1,25 +1,24 @@
-from typing import Type
-
-from overrides import override
-
 from LLM.nyako_llm import ConversationSession
-from nyako.pipesys.MessageReciever import MessageReceiver
+from pipesys import Pipe, MessageSource
 import params
 
 from event_system import EventBusSingleton
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
-from event_system.events.System import CommandAvailabilityEvent, CommandEvent, CommandType
-from pipesys import Pipe
+from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, OutputDeliveryEvent, SystemOutputType
+from event_system.events.System import CommandEvent, CommandType
 
-class ConversationSessionProcessor(MessageReceiver):
+class ConversationSessionProcessor(Pipe):
     conversation_session: ConversationSession
     available_outputs: set[SystemOutputType]
+    buffer_size: int
 
-    def __init__(self, listen_to):
-        super().__init__(listen_to)
+    def __init__(self, listen_to: MessageSource | list[MessageSource], track_outputs_from: MessageSource, buffer_size=10):
+        super().__init__()
+
+        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribeAll(track_outputs_from, self.onOutputDelivered)
 
     @classmethod
-    async def create(cls, listen_to: MessageEvent | Pipe | Type[MessageEvent]):
+    async def create(cls, listen_to: MessageEvent | Pipe | list[MessageSource], track_LLM_outputs_from: MessageSource = OutputDeliveryEvent, buffer_size=10):
         self = ConversationSessionProcessor(listen_to)
 
         EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputsChange)

@@ -1,17 +1,21 @@
 from abc import ABC
+from typing import Union
+from event_system import EventBusSingleton
+from event_system.events.Pipeline import MessageEvent
 
+MessageSource = Union[MessageEvent, 'Pipe', type[MessageEvent]]
 class Pipe(ABC):
     """
     Marker interface for classes which take input and give output as part of a pipeline using EventBus.
     """
-    pass
+    def subscribeAll(self, listen_to: MessageSource | list[MessageSource], callback):
+        if not isinstance(listen_to, list):
+            listen_to = [listen_to]
 
-class OutputPipe(Pipe):
-    """
-    Marker interface for a pipe which outputs using system functionality.
-    """
+        for source in listen_to:
+            if isinstance(source, Pipe):
+                event = MessageEvent(sender=source)
+            else:
+                event = source
 
-class InputPipe(Pipe):
-    """
-    Marker interface for a pipe which takes input directly from system functionality.
-    """
+            EventBusSingleton.subscribe(event, callback)

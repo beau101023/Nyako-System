@@ -3,12 +3,14 @@ from event_system.EventBusSingleton import EventBusSingleton
 
 from event_system.events.Discord import TextChannelConnectedEvent
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputDeliveryEvent
-from pipesys import Pipe, OutputPipe
+from pipesys import Pipe, MessageSource
 
-class DiscordOutput(MessageReceiver, OutputPipe):
-    def __init__(self, listen_to: Pipe | MessageEvent | type[MessageEvent]):
-        super().__init__(listen_to)
+class DiscordOutput(Pipe):
+    def __init__(self, listen_to: MessageSource | list[MessageSource]):
+        super().__init__()
         self.sendChannel: discord.abc.MessageableChannel | None = None
+
+        self.subscribeAll(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: Pipe | MessageEvent | type[MessageEvent]):
