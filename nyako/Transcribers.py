@@ -9,10 +9,7 @@ import whisper_at as whisper
 from params import device
 from params import INPUT_SAMPLING_RATE
 
-from threading import Thread
-from queue import Queue
-
-from typing import List, Type, Dict
+from typing import List
 
 class Transcriber(ABC):
     def __init__(self):
