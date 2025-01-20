@@ -196,14 +196,7 @@ class DiscordVoiceInput(Pipe):
         pass
 
     async def cleanup(self):
-        if self.voice_connection is None:
-            self.__del__()
+        if not self.voice_connection:
             return
 
         await self.voice_connection.disconnect()
-        self.__del__()
-
-    def __del__(self):
-        if self.voice_connection != None:
-            self.voice_connection.stop_recording()
-            self.voice_connection = None
