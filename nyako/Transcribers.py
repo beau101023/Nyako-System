@@ -78,7 +78,11 @@ class WhisperTranscriber(Transcriber):
         audio_np *= input_gain
 
         # run transcription
-        self.result = self.transcriber.transcribe(audio_np, at_time_res=10, initial_prompt="Hey Nyako")
+        try:
+            self.result = self.transcriber.transcribe(audio_np, at_time_res=10, initial_prompt="Hey Nyako")
+        except Exception as e:
+            print(e)
+            return "[speech unclear]"
 
         out_text = ""
         for segment in self.result['segments']:
