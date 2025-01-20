@@ -32,7 +32,7 @@ class DiscordVoiceInput(Pipe):
     transcriber : Transcriber
     voice_connection: discord.VoiceClient | None
 
-    def __init__(self):
+    def __init__(self, speech_timeout):
         self.voice_connection = None
         self.stream_sink = StreamSink()
 
@@ -40,13 +40,13 @@ class DiscordVoiceInput(Pipe):
         self.speechRecordingTriggeredByUser = {}
         self.speechBufferByUser = {}
         self.inputGain = 1.0
-        self.speech_timeout = 1.2
+        self.speech_timeout = speech_timeout
 
         self.stopped = False
 
     @classmethod
-    async def create(cls, transcriber: Transcriber | None) -> 'DiscordVoiceInput':
-        self = DiscordVoiceInput()
+    async def create(cls, transcriber: Transcriber | None, speech_timeout = 0.3) -> 'DiscordVoiceInput':
+        self = DiscordVoiceInput(speech_timeout)
 
         if(transcriber):
             self.transcriber = transcriber
