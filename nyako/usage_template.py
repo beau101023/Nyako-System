@@ -5,9 +5,8 @@ import Transcribers
 
 from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.System import StartupEvent, StartupStage
-from TTS import SileroRVC_TTS, SileroTTS
-from pipesys.outputs import ConsoleOutput, PipelineMonitor, DiscordOutput
-from pipesys.inputs import DiscordInput
+from TTS import SileroTTS
+from pipesys.outputs import PipelineMonitor
 
 torch.set_num_threads(4)
 
@@ -15,11 +14,7 @@ import asyncio
 
 import pipesys
 
-from event_system.events.Pipeline import MessageEvent, OutputMessageEvent, UserInputEvent
-
-### NOTE: You need to run VSCode as administrator for this specific import to work due to stupid shit with TextToSpeechOutput's innerworkings
-###     as such, it's not imported by default when you import module_system
-from pipesys.outputs.TextToSpeechOutput import TextToSpeechOutput
+from event_system.events.Pipeline import MessageEvent, OutputRoutingEvent, UserInputEvent
 
 from AdminPanel import AdminPanel
 from TaskManager import TaskManager
@@ -38,7 +33,7 @@ async def main():
     ##  and woken prematurely by raising Topics.System.WAKE
     #sleep_manager = await SleepManager.create(event_bus)
 
-    admin_events = await AdminPanel.create(listen_to=OutputMessageEvent)
+    admin_events = await AdminPanel.create(listen_to=OutputRoutingEvent)
     
     # endregion
 
