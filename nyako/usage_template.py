@@ -40,7 +40,7 @@ async def main():
     # region Input Modules
 
     ## Multi-user voice input via discord
-    discord_voice_input = await pipesys.inputs.DiscordVoiceInput.create(Transcribers.WhisperTranscriber(no_speech_probability_threshold=0.6))
+    discord_voice_input = await pipesys.inputs.DiscordVoiceInput.create(Transcribers.WhisperTranscriber(no_speech_probability_threshold=0.6), speech_timeout=0.1)
     
     ui_monitor = await PipelineMonitor.create(listen_to=UserInputEvent)
     monitor = await PipelineMonitor.create(listen_to=MessageEvent)
@@ -54,7 +54,7 @@ async def main():
     # region Processing Modules
 
     ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
-    message_chunker = await pipesys.processors.RealtimeMessageChunker.create(listen_to=UserInputEvent, processor_delay=0.3)
+    message_chunker = await pipesys.processors.RealtimeMessageChunker.create(listen_to=UserInputEvent, processor_delay=0.5)
     
     ## The conversation session processor queries the LLM
     conversation_session_processor = await pipesys.processors.ConversationSessionProcessor.create(listen_to=message_chunker)
