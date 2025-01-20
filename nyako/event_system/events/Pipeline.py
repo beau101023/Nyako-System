@@ -92,16 +92,17 @@ class UserInputEvent(MessageEvent):
         return f"[{self.user_input_type.name.lower()}] {self.user_name}: {self.message}"
 
 @dataclass
-class OutputMessageEvent(MessageEvent):
+class OutputRoutingEvent(MessageEvent):
     """
     A dataclass representing an event to be raised to deliver output to a specific destination.
     """
     destination: SystemOutputType = SystemOutputType.CONSOLE
-
-    def __str__(self) -> str:
-        if self.message == None:
-            return ""
-        return self.message
+    
+@dataclass
+class OutputDeliveryEvent(MessageEvent):
+    """
+    A dataclass representing an event to be raised when an output is successfully delivered.
+    """
 
 @dataclass
 class OutputAvailabilityEvent(Event):
