@@ -112,11 +112,6 @@ class DiscordVoiceInput(Pipe):
 
                         print("{0} stopped speaking".format(user_str))
 
-                        # all users have ceased speaking
-                        if not any(self.speechRecordingTriggeredByUser.values()):
-                            # notify that user speech has ended
-                            await EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT))
-
                         speech_buffer = self.speechBufferByUser[user_id]
 
                         if self.client:
@@ -162,10 +157,15 @@ class DiscordVoiceInput(Pipe):
         if debug_mode:
             print("[voice] {0}: {1}".format(user, transcribed_speech))
 
-
         # publish to pipeline
         coroutine = EventBusSingleton.publish(UserInputEvent(transcribed_speech, self, SystemInputType.DISCORD_VOICE, user_name=user, priority=2))
         asyncio.run_coroutine_threadsafe(coroutine, loop)
+
+        # all users have ceased speaking and transcription is complete
+        if not any(self.speechRecordingTriggeredByUser.values()):
+            # notify that user speech has ended
+            coroutine = EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT))
+            asyncio.run_coroutine_threadsafe(coroutine, loop)
 
 
     def onInputVolumeUpdate(self, event: VolumeUpdatedEvent):
