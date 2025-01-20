@@ -1,17 +1,17 @@
 from datetime import datetime
 
 import params
-from params import CLIENT_INSTANCE as client
+from params import ASYNCOPENAI as client
 
 from vectordb.nyako_ltm import insertToMemory
 from vectordb.nyako_ltm import retrieveMemoriesWithContext
 
-def get_response(messages, model=params.nyako_model):
+async def get_response(messages: list, model=params.nyako_model):
 
     if messages == None:
         raise ValueError("messages cannot be None")
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
 
         model = model,
 
@@ -20,6 +20,17 @@ def get_response(messages, model=params.nyako_model):
     )
 
     return response.choices[0].message.content
+
+async def get_response_stream(messages: list, model=params.nyako_model):
+    if messages is None:
+        raise ValueError("messages cannot be None")
+
+    async for response in await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        stream=True
+    ):
+        yield response.choices[0].delta.content
 
 def format_message_as_dict(role: str, message: str) -> dict[str,str]:
 
@@ -72,9 +83,40 @@ class ConversationSession:
         self.current_context_messages: list[dict[str,str]] = []
         self.memory = {}
 
-    def query(self, message: str) -> str:
+    async def stream_query(self, message: str, buffer_size: int):
+        """
+        Asynchronously streams a query message and processes response chunks.
+
+        Args:
+            message (str): The query message to be sent.
+            buffer_size (int): The size of the buffer to accumulate response chunks before processing.
+
+        Yields:
+            str: Concatenated response chunks that are processed and stored.
+
+        This function sends a query message, streams the response in chunks, and processes each chunk.
+        It accumulates chunks in a buffer until a sentence-ending punctuation (., !, ?) is found or the buffer size limit is reached.
+        The accumulated chunks are then concatenated, processed, stored, and yielded.
+        """
         self._add_message_to_history(message)
-        response = self._get_response_from_model()
+        buffer = []
+        buffer_length = 0
+        async for response_chunk in get_response_stream(await self.getContext()):
+            if response_chunk:
+                buffer.append(response_chunk)
+                buffer_length += len(response_chunk)
+                if re.search(r'[.!?]', response_chunk) or (buffer_length >= buffer_size and re.search(r'\s$', response_chunk)):
+                    concatenated_response = ''.join(buffer)
+                    yield concatenated_response
+                    buffer = []
+                    buffer_length = 0
+        if buffer:
+            concatenated_response = ''.join(buffer)
+            yield concatenated_response
+
+    async def query(self, message: str) -> str:
+        self._add_message_to_history(message)
+        response = await get_response(await self.getContext())
 
         if not response:
             return ""
@@ -88,9 +130,9 @@ class ConversationSession:
     def mostRecentMessage(self) -> dict:
         return self.current_context_messages[-1]
 
-    def getContext(self) -> list:
+    async def getContext(self) -> list:
         context = [self.systemP]
-        ltm = self.getLongTermMemory()
+        ltm = await self.getLongTermMemory()
         if ltm:
             context.append(ltm)
         if self.memory:
@@ -98,10 +140,13 @@ class ConversationSession:
         context += self.current_context_messages
         return context
 
-    def getLongTermMemory(self):
-        return self._retrieve_long_term_memory()
+    async def getLongTermMemory(self):
+        memoryChunks = await retrieveMemoriesWithContext(self.mostRecentMessage()["content"], params.ltm_retrieval_count, params.ltm_context_size)
+        if len(memoryChunks) == 0:
+            return None
+        return self._format_memory_chunks(memoryChunks)
 
-    def memorize(self, messages):
+    async def memorize(self, messages):
         if messages is None or len(messages) == 0:
             return
 
@@ -113,42 +158,33 @@ class ConversationSession:
         else:
             memory_management_input = [self.summarizeP] + memory_management_input
 
-        memory_response = get_response(memory_management_input, params.summarization_model)
+        memory_response = await get_response(memory_management_input, params.summarization_model)
 
         if memory_response is None:
             return
 
-        insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in messages]))
+        await insertToMemory(memory_response, "\n".join([message_dict_to_string(message) for message in messages]))
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
-    def memorizeOldest(self, num_messages):
+    async def memorizeOldest(self, num_messages):
         oldest_messages = self.current_context_messages[:num_messages]
-        self.memorize(oldest_messages)
+        await self.memorize(oldest_messages)
         self.current_context_messages = self.current_context_messages[num_messages:]
 
-    def memorizeAll(self):
-        self.memorize(self.current_context_messages)
+    async def memorizeAll(self):
+        await self.memorize(self.current_context_messages)
         self.current_context_messages = []
 
     def _add_message_to_history(self, message):
         timeString = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
         self.current_context_messages.append(format_message_as_dict("user", timeString + message))
 
-    def _get_response_from_model(self):
-        return get_response(self.getContext())
-
-    def _process_and_store_response(self, response: str) -> None:
-        self.current_context_messages.append(format_message_as_dict("assistant", response))
+    async def addLLMMessageToContext(self, assistant_message: str) -> None:
+        self.current_context_messages.append(format_message_as_dict("assistant", assistant_message))
         if(len(self.current_context_messages) > params.max_context_len and params.memorize_enabled):
-            self.memorizeOldest(params.num_messages_to_summarize)
+            await self.memorizeOldest(params.num_messages_to_summarize)
         else:
             self.current_context_messages = self.current_context_messages[-params.max_context_len:]
-
-    def _retrieve_long_term_memory(self):
-        memoryChunks = retrieveMemoriesWithContext(self.mostRecentMessage()["content"], params.ltm_retrieval_count, params.ltm_context_size)
-        if len(memoryChunks) == 0:
-            return None
-        return self._format_memory_chunks(memoryChunks)
 
     def _format_memory_chunks(self, memoryChunks):
         aggregateText = "[long-term memory]\n"

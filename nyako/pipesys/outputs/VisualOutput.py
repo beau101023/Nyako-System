@@ -10,7 +10,7 @@ from event_system import Event, EventBusSingleton
 from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 from event_system.events.Pipeline import MessageEvent
 from pipesys import MessageReceiver, OutputPipe, Pipe
-from params import CLIENT_INSTANCE as client
+from params import ASYNCOPENAI as client
 
 class VisualOutput(MessageReceiver, OutputPipe):
     """
@@ -81,7 +81,7 @@ class VisualOutput(MessageReceiver, OutputPipe):
         possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("nyako/images/")]
 
         # Call the OpenAI API to classify the message
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the given emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise"},
