@@ -1,11 +1,9 @@
-ocotillo
-vectordb/workspace_path
+vectordb/
 logs/
 OpenAI_Finetuning/nyako_data_repack.jsonl
-nyako/rvc_pipe
-nyako/vectordb/workspace_path
-nyako/rvc_voice_models
-nyako/inference_temp
+OpenAI_Finetuning/training_features
+src/rvc_voice_models
+src/inference_temp
 Machine Learning.code-workspace
 
 # VSCode
