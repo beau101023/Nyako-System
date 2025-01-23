@@ -1,13 +1,27 @@
+# Keys & Tokens
+openai_api_key.txt
+discord_bot_token.txt
+
+# Vector DB production database directory
 vectordb/
+
+# Conversation log directory
 logs/
-OpenAI_Finetuning/nyako_data_repack.jsonl
-OpenAI_Finetuning/training_features
-src/rvc_voice_models
-src/inference_temp
-Machine Learning.code-workspace
+
+# Images for the reaction image module
+images/*
+
+# Voice model directory
+rvc_voice_models
+
+# Bounce-to-disk processing directory
+inference_temp
+
+## Boilerplate
 
 # VSCode
 .vscode
+Machine Learning.code-workspace
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

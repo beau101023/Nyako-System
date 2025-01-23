@@ -62,9 +62,9 @@ class ConversationSessionProcessor(Pipe):
         valid_tags = [output.toString() for output in self.available_outputs]
 
         if(len(self.available_outputs) > 0):
-            return params.nyako_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
+            return params.chat_model_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
         else:
-            return params.nyako_prompt
+            return params.chat_model_prompt
         
     async def onStop(self, event: CommandEvent):
         if params.memorize_enabled:

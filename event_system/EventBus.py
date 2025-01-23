@@ -5,7 +5,7 @@ from event_system import Event
 
 AnyEvent = TypeVar('AnyEvent', bound=Event)
 
-EventHandler = Union[Callable[[AnyEvent], None],Callable[[AnyEvent], Coroutine[Any,Any,None]]]
+EventHandler = Union[Callable[[AnyEvent], None], Callable[[AnyEvent], Coroutine[Any,Any,None]]]
 
 class EventBus:
     """

@@ -1,37 +1,28 @@
-import torch
 import qasync
-
-import Transcribers
-
-from event_system.EventBusSingleton import EventBusSingleton
-from event_system.events.System import StartupEvent, StartupStage
-from TTS import SileroTTS
-from pipesys.outputs import PipelineMonitor
-
-torch.set_num_threads(4)
-
 import asyncio
 
-import pipesys
+import Transcribers
+from TTS import SileroTTS
 
+from event_system import EventBusSingleton
+from event_system.events.System import StartupEvent, StartupStage
 from event_system.events.Pipeline import MessageEvent, OutputRoutingEvent, UserInputEvent
 
-from AdminPanel import AdminPanel
+from pipesys.core import AdminPanel, DiscordClientRunner
+from pipesys.inputs import DiscordVoiceInput
+from pipesys.processors import RealtimeMessageChunker, ConversationSessionProcessor
+from pipesys.outputs import PipelineMonitor, FileLogger, DiscordVoiceOutput
+
 from TaskManager import TaskManager
 
 async def main():
     # region Core Modules
 
-    ## MANDATORY Collects all tasks, must be created before task-producing modules
+    ## MANDATORY Runs all async tasks, must be created before task-producing modules
     task_manager = TaskManager()
 
     ## Handles the discord client
-    discord_client_runner = await pipesys.core.DiscordClientRunner.create()
-
-    ## Handles automated waking of the system after periods of inactivity
-    ## Can be triggered by raising Topics.System.SLEEP
-    ##  and woken prematurely by raising Topics.System.WAKE
-    #sleep_manager = await SleepManager.create(event_bus)
+    discord_client_runner = await DiscordClientRunner.create()
 
     admin_events = await AdminPanel.create(listen_to=OutputRoutingEvent)
     
@@ -40,9 +31,9 @@ async def main():
     # region Input Modules
 
     ## Multi-user voice input via discord
-    discord_voice_input = await pipesys.inputs.DiscordVoiceInput.create(Transcribers.WhisperTranscriber(no_speech_probability_threshold=0.6), speech_timeout=0.1)
+    discord_voice_input = await DiscordVoiceInput.create(Transcribers.WhisperTranscriber(no_speech_probability_threshold=0.6), speech_timeout=0.1)
     
-    ui_monitor = await PipelineMonitor.create(listen_to=UserInputEvent)
+    input_monitor = await PipelineMonitor.create(listen_to=UserInputEvent)
     monitor = await PipelineMonitor.create(listen_to=MessageEvent)
 
     #speech_to_text = await pipesys.inputs.SpeechToTextInput.create(Transcribers.WhisperTranscriber())
@@ -54,10 +45,10 @@ async def main():
     # region Processing Modules
 
     ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
-    message_chunker = await pipesys.processors.RealtimeMessageChunker.create(listen_to=UserInputEvent, processor_delay=0.5)
+    message_chunker = await RealtimeMessageChunker.create(listen_to=UserInputEvent, processor_delay=0.5)
     
     ## The conversation session processor queries the LLM
-    conversation_session_processor = await pipesys.processors.ConversationSessionProcessor.create(listen_to=message_chunker)
+    conversation_session_processor = await ConversationSessionProcessor.create(listen_to=message_chunker)
     
     ## The message router sends the results to the output modules based on a tagging system
     ## For example, if the LLM produces an output with the string "[voice]", the message router will send the text after that tag to the voice output module
@@ -69,9 +60,9 @@ async def main():
 
     #console_output = await pipesys.outputs.ConsoleOutput.create(listen_to=conversation_session_processor)
     #speech_output = await TextToSpeechOutput.create(listen_to=conversation_session_processor)
-    discord_voice_output = await pipesys.outputs.DiscordVoiceOutput.create(listen_to=conversation_session_processor, speech_to_text=SileroTTS())
+    discord_voice_output = await DiscordVoiceOutput.create(listen_to=conversation_session_processor, speech_to_text=SileroTTS())
 
-    message_logger = await pipesys.outputs.FileLogger.create(listen_to=conversation_session_processor)
+    message_logger = await FileLogger.create(listen_to=conversation_session_processor)
 
     #visual_output = await pipesys.outputs.VisualOutput.create(listen_to=conversation_session_processor, parent=admin_events)
 

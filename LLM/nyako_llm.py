@@ -4,10 +4,10 @@ import re
 import params
 from params import ASYNCOPENAI as client
 
-from vectordb.nyako_ltm import insertToMemory
-from vectordb.nyako_ltm import retrieveMemoriesWithContext
+from src.vectordb.RAG_utils import insertToMemory
+from src.vectordb.RAG_utils import retrieveMemoriesWithContext
 
-async def get_response(messages: list, model=params.nyako_model):
+async def get_response(messages: list, model=params.chat_model):
 
     if messages == None:
         raise ValueError("messages cannot be None")
@@ -22,7 +22,7 @@ async def get_response(messages: list, model=params.nyako_model):
 
     return response.choices[0].message.content
 
-async def get_response_stream(messages: list, model=params.nyako_model):
+async def get_response_stream(messages: list, model=params.chat_model):
     if messages is None:
         raise ValueError("messages cannot be None")
 
@@ -78,7 +78,7 @@ class ConversationSession:
         Memorizes and clears all messages in the conversation.
     """
 
-    def __init__(self, systemP=params.nyako_prompt, summarizeP=params.summarize_prompt):
+    def __init__(self, systemP=params.chat_model_prompt, summarizeP=params.summarize_prompt):
         self.systemP = format_message_as_dict("system", systemP)
         self.summarizeP = format_message_as_dict("system", summarizeP)
         self.current_context_messages: list[dict[str,str]] = []

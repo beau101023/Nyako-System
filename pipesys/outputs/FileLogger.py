@@ -4,7 +4,7 @@ from datetime import datetime
 from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, UserInputEvent
 from pipesys import Pipe, MessageSource
-from params import nyako_prompt
+from params import chat_model_prompt
 
 class FileLogger(Pipe):
     """
@@ -37,7 +37,7 @@ class FileLogger(Pipe):
         EventBusSingleton.subscribe(UserInputEvent, self.onMessage)
 
         async with aiofiles.open(self.logfile_path, mode='w', encoding='utf-8') as logfile:
-            await logfile.write(f"system: {nyako_prompt}")
+            await logfile.write(f"system: {chat_model_prompt}")
 
         return self
 
