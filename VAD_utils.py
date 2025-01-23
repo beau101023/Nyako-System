@@ -7,7 +7,7 @@ VAD, _ = torch.hub.load(repo_or_dir='snakers4/silero-vad',
                               model='silero_vad',
                               onnx=True)
 
-from params import INPUT_SAMPLING_RATE
+from settings import INPUT_SAMPLING_RATE
 
 def detectVoiceActivity(buf) -> float:
     if isinstance(buf, torch.Tensor):

@@ -1,6 +1,6 @@
 from LLM.nyako_llm import ConversationSession
 from pipesys import Pipe, MessageSource
-import params
+import settings
 import openai
 
 from event_system import EventBusSingleton
@@ -62,10 +62,10 @@ class ConversationSessionProcessor(Pipe):
         valid_tags = [output.toString() for output in self.available_outputs]
 
         if(len(self.available_outputs) > 0):
-            return params.chat_model_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
+            return settings.chat_model_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
         else:
-            return params.chat_model_prompt
+            return settings.chat_model_prompt
         
     async def onStop(self, event: CommandEvent):
-        if params.memorize_enabled:
+        if settings.memorize_enabled:
             await self.conversation_session.memorizeAll()

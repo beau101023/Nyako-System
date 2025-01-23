@@ -6,8 +6,8 @@ import numpy as np
 
 import whisper_at as whisper
 
-from params import device
-from params import INPUT_SAMPLING_RATE
+from settings import device
+from settings import INPUT_SAMPLING_RATE
 
 from typing import List
 

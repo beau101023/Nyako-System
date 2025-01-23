@@ -1,13 +1,13 @@
 from datetime import datetime
 import re
 
-import params
-from params import ASYNCOPENAI as client
+import settings
+from settings import ASYNCOPENAI as client
 
-from src.vectordb.RAG_utils import insertToMemory
-from src.vectordb.RAG_utils import retrieveMemoriesWithContext
+from vectordb.RAG_utils import insertToMemory
+from vectordb.RAG_utils import retrieveMemoriesWithContext
 
-async def get_response(messages: list, model=params.chat_model):
+async def get_response(messages: list, model=settings.chat_model):
 
     if messages == None:
         raise ValueError("messages cannot be None")
@@ -22,7 +22,7 @@ async def get_response(messages: list, model=params.chat_model):
 
     return response.choices[0].message.content
 
-async def get_response_stream(messages: list, model=params.chat_model):
+async def get_response_stream(messages: list, model=settings.chat_model):
     if messages is None:
         raise ValueError("messages cannot be None")
 
@@ -78,7 +78,7 @@ class ConversationSession:
         Memorizes and clears all messages in the conversation.
     """
 
-    def __init__(self, systemP=params.chat_model_prompt, summarizeP=params.summarize_prompt):
+    def __init__(self, systemP=settings.chat_model_prompt, summarizeP=settings.summarize_prompt):
         self.systemP = format_message_as_dict("system", systemP)
         self.summarizeP = format_message_as_dict("system", summarizeP)
         self.current_context_messages: list[dict[str,str]] = []
@@ -141,7 +141,7 @@ class ConversationSession:
         return context
 
     async def getLongTermMemory(self):
-        memoryChunks = await retrieveMemoriesWithContext(self.mostRecentMessage()["content"], params.ltm_retrieval_count, params.ltm_context_size)
+        memoryChunks = await retrieveMemoriesWithContext(self.mostRecentMessage()["content"], settings.ltm_retrieval_count, settings.ltm_context_size)
         if len(memoryChunks) == 0:
             return None
         return self._format_memory_chunks(memoryChunks)
@@ -158,7 +158,7 @@ class ConversationSession:
         else:
             memory_management_input = [self.summarizeP] + memory_management_input
 
-        memory_response = await get_response(memory_management_input, params.summarization_model)
+        memory_response = await get_response(memory_management_input, settings.summarization_model)
 
         if memory_response is None:
             return
@@ -181,10 +181,10 @@ class ConversationSession:
 
     async def addLLMMessageToContext(self, assistant_message: str) -> None:
         self.current_context_messages.append(format_message_as_dict("assistant", assistant_message))
-        if(len(self.current_context_messages) > params.max_context_len and params.memorize_enabled):
-            await self.memorizeOldest(params.num_messages_to_summarize)
+        if(len(self.current_context_messages) > settings.max_context_len and settings.memorize_enabled):
+            await self.memorizeOldest(settings.num_messages_to_summarize)
         else:
-            self.current_context_messages = self.current_context_messages[-params.max_context_len:]
+            self.current_context_messages = self.current_context_messages[-settings.max_context_len:]
 
     def _format_memory_chunks(self, memoryChunks):
         aggregateText = "[long-term memory]\n"

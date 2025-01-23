@@ -9,7 +9,7 @@ from event_system import EventBusSingleton
 from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 from event_system.events.Pipeline import MessageEvent
 from pipesys import Pipe, MessageSource
-from params import ASYNCOPENAI as client
+from settings import ASYNCOPENAI as client
 
 class VisualOutput(Pipe):
     """

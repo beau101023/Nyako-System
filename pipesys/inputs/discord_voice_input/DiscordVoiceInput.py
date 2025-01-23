@@ -12,13 +12,13 @@ from pipesys import Pipe
 from pipesys.inputs.discord_voice_input.StreamSink import StreamSink
 import torch
 
-from nyako_vad import detectVoiceActivity
+from VAD_utils import detectVoiceActivity
 from Transcribers import Transcriber
 from Transcribers import WhisperTranscriber
 
 from typing import Dict
 from pydub import AudioSegment
-from params import speech_sensitivity_threshold, debug_mode
+from settings import speech_sensitivity_threshold, debug_mode
 import numpy as np
 from threading import Thread
 

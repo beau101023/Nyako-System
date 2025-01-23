@@ -12,7 +12,7 @@ import soundfile as sf
 # disabled as rvc_infer requires running as admin
 # from rvc_pipe.rvc_infer import rvc_convert
 
-from params import sample_rate_out, language, model_id, speaker, device
+from settings import sample_rate_out, language, model_id, speaker, device
 
 class TextToSpeech(ABC):
     @abstractmethod

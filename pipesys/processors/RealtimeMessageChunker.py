@@ -8,8 +8,8 @@ from event_system.events.Audio import SpeakingStateUpdate, AudioDirection
 
 from pipesys import Pipe, MessageSource
 
-from params import default_processor_delay
-from params import default_no_input_interval_seconds
+from settings import default_processor_delay
+from settings import default_no_input_interval_seconds
 
 class RealtimeMessageChunker(Pipe):
     no_input_interval_seconds: int

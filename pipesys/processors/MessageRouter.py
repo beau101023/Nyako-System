@@ -3,7 +3,7 @@ import re
 from event_system import EventBusSingleton
 from pipesys import Pipe
 
-from params import debug_mode
+from settings import debug_mode
 
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputRoutingEvent
 from event_system.events.System import CommandEvent, CommandAvailabilityEvent, CommandType

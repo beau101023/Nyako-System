@@ -2,8 +2,8 @@ import asyncio
 import pyaudio
 from Transcribers import Transcriber, WhisperTranscriber
 from pipesys import Pipe
-from nyako_vad import detectVoiceActivity
-from params import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
+from VAD_utils import detectVoiceActivity
+from settings import FramesPerBuffer, INPUT_SAMPLING_RATE, debug_mode, speech_sensitivity_threshold
 
 from asyncio import AbstractEventLoop
 

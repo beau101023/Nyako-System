@@ -4,7 +4,7 @@ from datetime import datetime
 from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, UserInputEvent
 from pipesys import Pipe, MessageSource
-from params import chat_model_prompt
+from settings import chat_model_prompt
 
 class FileLogger(Pipe):
     """

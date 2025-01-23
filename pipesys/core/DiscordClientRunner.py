@@ -1,7 +1,7 @@
 import asyncio
 import discord
 from event_system.events.Discord import BotReadyEvent
-from params import DISCORD_BOT_TOKEN
+from settings import DISCORD_BOT_TOKEN
 from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 
 from event_system.EventBusSingleton import EventBusSingleton
