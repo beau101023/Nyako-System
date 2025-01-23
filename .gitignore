@@ -10,6 +10,7 @@ logs/
 
 # Images for the reaction image module
 images/*
+!images/README.md
 
 # Voice model directory
 rvc_voice_models
