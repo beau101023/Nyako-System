@@ -39,7 +39,7 @@ class VisualOutput(Pipe):
         self.text_panel.setWordWrap(True)
         layout.addWidget(self.text_panel, alignment=Qt.AlignmentFlag.AlignBottom)
 
-        self.setEmote("nyako/images/neutral.png")
+        self.setEmote("images/neutral.png")
         self.setText("[listening]")
 
         self.subscribeAll(listen_to, self.onMessage)
@@ -72,13 +72,13 @@ class VisualOutput(Pipe):
         emotion = await self.ChatGPTClassify(event.message)
 
         if emotion == None:
-            self.setEmote("nyako/images/neutral.png")
+            self.setEmote("images/neutral.png")
             return
-        self.setEmote("nyako/images/" + emotion + ".png")
+        self.setEmote("images/" + emotion + ".png")
 
     async def ChatGPTClassify(self, message: str):
         # Get the list of possible emotions from the names of the files in the /nyako/images directory
-        possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("nyako/images/")]
+        possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("images/")]
 
         # Call the OpenAI API to classify the message
         response = await client.chat.completions.create(
