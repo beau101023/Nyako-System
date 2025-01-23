@@ -181,7 +181,7 @@ class DiscordVoiceInput(Pipe):
         self.voice_connection = event.voice_client
 
         # play sample to initialize the voice client
-        sample = open("nyako/audio/Basic 808 Kick_2.wav", 'rb')
+        sample = open("audio/startup.wav", 'rb')
         self.voice_connection.play(discord.PCMAudio(sample))
         self.voice_connection.start_recording(sink=self.stream_sink, callback=self.recording_stopped_callback)
 
