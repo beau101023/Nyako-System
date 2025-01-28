@@ -1,7 +1,7 @@
 import threading
 import asyncio
 
-from TTS import TextToSpeech, SileroRVC_TTS
+from TTS import TextToSpeech
 
 from audio_playback import Audio_Player
 from audio_playback import PyAudioPlayer
