@@ -55,7 +55,7 @@ class WhisperTranscriber(Transcriber):
         Parameters:
         no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
         """
-        self.transcriber = whisper.load_model("medium.en", device=device, in_memory=True)
+        self.transcriber = whisper.load_model("small.en", device=device, in_memory=True)
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
@@ -80,7 +80,7 @@ class WhisperTranscriber(Transcriber):
 
         # run transcription
         try:
-            self.result = self.transcriber.transcribe(audio_np, at_time_res=10, initial_prompt="Hey Nyako")
+            self.result = self.transcriber.transcribe(audio_np, at_time_res=10, initial_prompt="Conversation between Nyako and Beau:")
         except Exception as e:
             print(e)
             return "[speech unclear]"
