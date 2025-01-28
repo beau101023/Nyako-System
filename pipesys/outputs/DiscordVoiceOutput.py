@@ -14,7 +14,7 @@ from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, 
 from event_system.events.Audio import AudioDirection, SpeakingStateUpdate, AudioType
 from event_system.events.Pipeline import OutputDeliveryEvent
 
-from event_system.events.System import TaskCreatedEvent
+from event_system.events.System import StartupEvent, StartupStage, TaskCreatedEvent
 from pipesys.Pipe import Pipe, MessageSource
 
 class DiscordVoiceOutput(Pipe):
@@ -36,6 +36,7 @@ class DiscordVoiceOutput(Pipe):
 
         self.text_to_speech = speech_to_text
 
+        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
         EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
         self.subscribeAll(listen_to, self.handleMessage)
@@ -45,6 +46,9 @@ class DiscordVoiceOutput(Pipe):
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Voice Output Playback"))
 
         return self
+    
+    def onWarmup(self, event: StartupEvent):
+        self.text_to_speech.warmup()
     
     async def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
         self.voice_connection = event.voice_client
