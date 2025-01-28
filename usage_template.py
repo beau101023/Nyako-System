@@ -2,7 +2,7 @@ import qasync
 import asyncio
 
 import Transcribers
-from TTS import SileroTTS
+from TTS import MeloTTS
 
 from event_system import EventBusSingleton
 from event_system.events.System import StartupEvent, StartupStage
@@ -60,7 +60,7 @@ async def main():
 
     #console_output = await pipesys.outputs.ConsoleOutput.create(listen_to=conversation_session_processor)
     #speech_output = await TextToSpeechOutput.create(listen_to=conversation_session_processor)
-    discord_voice_output = await DiscordVoiceOutput.create(listen_to=conversation_session_processor, speech_to_text=SileroTTS())
+    discord_voice_output = await DiscordVoiceOutput.create(listen_to=conversation_session_processor, text_to_speech=MeloTTS())
 
     message_logger = await FileLogger.create(listen_to=conversation_session_processor)
 
