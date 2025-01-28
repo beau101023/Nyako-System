@@ -10,7 +10,6 @@ from event_system.events.Discord import BotReadyEvent, VoiceChannelConnectedEven
 import asyncio
 from pipesys import Pipe
 from pipesys.inputs.discord_voice_input.StreamSink import StreamSink
-import torch
 
 from VAD_utils import detectVoiceActivity
 from Transcribers import Transcriber
@@ -19,7 +18,6 @@ from Transcribers import WhisperTranscriber
 from typing import Dict
 from pydub import AudioSegment
 from settings import speech_sensitivity_threshold, debug_mode
-import numpy as np
 from threading import Thread
 
 class DiscordVoiceInput(Pipe):
