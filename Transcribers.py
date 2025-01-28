@@ -5,6 +5,7 @@ from pydub import AudioSegment
 import numpy as np
 
 import whisper_at as whisper
+from faster_whisper import WhisperModel
 
 from settings import device
 from settings import INPUT_SAMPLING_RATE
@@ -107,3 +108,57 @@ class WhisperTranscriber(Transcriber):
                 tags.add(segment_tuple[0])  # Extract the tag from the tuple
     
         return list(tags)  # Convert the set to a list
+    
+class FasterWhisperTranscriber(Transcriber):
+    def __init__(self, no_speech_probability_threshold:float = 0.7):
+        """
+        Create a new FasterWhisperTranscriber
+
+        Parameters:
+        no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
+        """
+        model_size = "distil-large-v3"
+        self.model = WhisperModel(model_size, device=device.type, compute_type="float16")
+        self.no_speech_probability_threshold = no_speech_probability_threshold
+        self.result = None
+
+    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0):
+
+        audio_segment = speechBuffer
+        audio_segment = audio_segment.set_frame_rate(INPUT_SAMPLING_RATE)  # Set sampling rate to 16kHz
+        audio_segment = audio_segment.set_channels(1)        # Set to mono
+        audio_segment = audio_segment.set_sample_width(2)    # Set sample width to 16-bit (2 bytes)
+
+        # Export the audio data to raw bytes
+        audio_bytes = audio_segment.raw_data
+
+        if not isinstance(audio_bytes, bytes):
+            raise RuntimeError("AudioSegment invalid.")
+
+        # Convert the raw bytes to a numpy array of type int16
+        audio_np = np.frombuffer(audio_bytes, dtype=np.int16).flatten().astype(np.float32) / 32768.0
+
+        # apply input gain
+        audio_np *= input_gain
+
+        # run transcription
+        try:
+            self.result = self.model.transcribe(audio_np, beam_size=5, language="en", condition_on_previous_text=False, initial_prompt="Conversation between Nyako and Beau:")
+        except Exception as e:
+            print(e)
+            return "[speech unclear]"
+
+        segments, _ = self.result
+
+        out_text = ""
+        for segment in segments:
+            if(segment.no_speech_prob <= self.no_speech_probability_threshold):
+                out_text += segment.text
+
+        return out_text
+    
+    def supports_extra_tagging(self):
+        return False
+    
+    def get_extra_tagging(self) -> list[str]:
+        raise RuntimeError("Extra tagging not supported on FasterWhisper")
