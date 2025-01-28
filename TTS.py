@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from io import FileIO
+
+from melo.api import TTS as meloModel
 
 import numpy as np
 
@@ -7,7 +8,6 @@ from pydub import AudioSegment
 
 from overrides import override
 import torch
-import soundfile as sf
 
 from settings import sample_rate_out, language, model_id, speaker, device
 
@@ -69,5 +69,36 @@ class SileroTTS(TextToSpeech):
             sample_width=2,  # 16 bit
             channels=1  # mono
         )
+
+        return audio_segment
+
+class MeloTTS(TextToSpeech):
+    def __init__(self, speaker=speaker, sample_rate=sample_rate_out):
+        self.speaker = speaker
+        self.sample_rate = sample_rate
+
+        self.model = meloModel(language='EN', device=device.type)
+        self.speaker_ids = self.model.hps.data.spk2id
+
+    @override
+    def warmup(self) -> None:
+        self.model.tts_to_file("HIHIHI", self.speaker_ids['EN-US'], speed=1.0, quiet=True)
+
+    @override
+    def generate_speech(self, text: str) -> AudioSegment | None:
+        audio_data_np: np.ndarray = self.model.tts_to_file(text, self.speaker_ids['EN-US'], speed=1.0, quiet=True)
+
+        # Scale to the range of 16-bit PCM audio
+        audio_data_np = np.int16(audio_data_np * 32767) # type: ignore
+
+        # Create an audio segment from the numpy array
+        audio_segment = AudioSegment(
+            audio_data_np.tobytes(),  # data
+            frame_rate=self.model.hps.data.sampling_rate,  # sample rate
+            sample_width=2,  # 16 bit
+            channels=1  # mono
+        )
+
+        audio_segment.set_frame_rate(self.sample_rate)
 
         return audio_segment
