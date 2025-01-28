@@ -16,7 +16,7 @@ from pipesys import Pipe, MessageSource
 
 
 class TextToSpeechOutput(Pipe):
-    speech_to_text: TextToSpeech
+    text_to_speech: TextToSpeech
     audio_player: Audio_Player
 
     def __init__(self):
@@ -26,7 +26,7 @@ class TextToSpeechOutput(Pipe):
     async def create(cls, listen_to: MessageSource, speech_to_text: TextToSpeech=SileroRVC_TTS(), audio_player: Audio_Player=PyAudioPlayer()):
         self = TextToSpeechOutput()
 
-        self.speech_to_text = speech_to_text
+        self.text_to_speech = speech_to_text
         self.audio_player = audio_player
 
         # subscribe to events
@@ -57,7 +57,7 @@ class TextToSpeechOutput(Pipe):
         self.audio_player.set_volume(event.volume)
 
     def say(self, text, loop):
-        audio = self.speech_to_text.generate_speech(text)
+        audio = self.text_to_speech.generate_speech(text)
 
         if audio == None:
             return
@@ -69,7 +69,7 @@ class TextToSpeechOutput(Pipe):
         )
 
     def onWarmup(self, event: StartupEvent):
-        self.speech_to_text.warmup()
+        self.text_to_speech.warmup()
 
     async def publishSpeakingStart(self):
         await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.SYSTEM, AudioDirection.OUTPUT))
