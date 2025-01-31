@@ -83,7 +83,7 @@ class DiscordVoiceInput(Pipe):
         Main loop that polls audio data from the stream_sink and processes it.
         """
         while not self.stopped:
-            if self.stream_sink.has_data() and self.voice_connection is not None:
+            if self.stream_sink.has_data() and self.voice_connection:
                 data = self.stream_sink.pop_data()
                 if data is not None:
                     user_id, audio_segment = data
