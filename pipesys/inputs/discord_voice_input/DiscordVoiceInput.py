@@ -1,13 +1,16 @@
+import asyncio
 import discord
 
+from typing import Dict
+from pydub import AudioSegment
+from threading import Thread
+
 from event_system import EventBusSingleton
-
 from event_system.events.Audio import AudioDirection, VolumeUpdatedEvent, AudioType, SpeakingStateUpdate
-from event_system.events.System import TaskCreatedEvent, CommandEvent, CommandType
-from event_system.events.Pipeline import UserInputEvent, SystemInputType
 from event_system.events.Discord import BotReadyEvent, VoiceChannelConnectedEvent, VoiceChannelDisconnectedEvent
+from event_system.events.Pipeline import UserInputEvent, SystemInputType
+from event_system.events.System import TaskCreatedEvent, CommandEvent, CommandType
 
-import asyncio
 from pipesys import Pipe
 from pipesys.inputs.discord_voice_input.StreamSink import StreamSink
 
@@ -15,186 +18,244 @@ from VAD_utils import detectVoiceActivity
 from Transcribers import Transcriber
 from Transcribers import WhisperTranscriber
 
-from typing import Dict
-from pydub import AudioSegment
 from settings import speech_sensitivity_threshold, debug_mode
-from threading import Thread
+
 
 class DiscordVoiceInput(Pipe):
-    stream_sink : StreamSink
-    client : discord.Client | None = None
-    speechRecordingTriggeredByUser : Dict[int, bool]
-    speechBufferByUser : Dict[int, list[AudioSegment]]
-    noSpeechTimeByUser : Dict[int, float]
-    inputGain : float
-    transcriber : Transcriber
-    voice_connection: discord.VoiceClient | None
+    """
+    A Pipe that captures voice data from a Discord voice channel, detects speech,
+    and transcribes the audio into text events for downstream processing.
+    """
 
-    def __init__(self, speech_timeout):
-        self.voice_connection = None
+    def __init__(self, speech_timeout: float):
+        """
+        Initialize a DiscordVoiceInput instance.
+
+        :param speech_timeout: The amount of silence (in seconds) required to consider speech ended.
+        """
+        self.voice_connection: discord.VoiceClient | None = None
+        self.client: discord.Client | None = None
         self.stream_sink = StreamSink()
 
-        self.noSpeechTimeByUser = {}
-        self.speechRecordingTriggeredByUser = {}
-        self.speechBufferByUser = {}
-        self.inputGain = 1.0
-        self.speech_timeout = speech_timeout
+        self.no_speech_time_by_user: Dict[int, float] = {}
+        self.speech_recording_triggered_by_user: Dict[int, bool] = {}
+        self.speech_buffer_by_user: Dict[int, list[AudioSegment]] = {}
 
+        self.input_gain = 1.0
+        self.speech_timeout = speech_timeout
         self.stopped = False
 
+        # Default to WhisperTranscriber if none is provided in create().
+        self.transcriber: Transcriber = WhisperTranscriber()
+
     @classmethod
-    async def create(cls, transcriber: Transcriber | None, speech_timeout = 0.3) -> 'DiscordVoiceInput':
-        self = DiscordVoiceInput(speech_timeout)
+    async def create(cls, transcriber: Transcriber | None, speech_timeout: float = 0.3) -> 'DiscordVoiceInput':
+        """
+        Factory method to create and launch the DiscordVoiceInput pipe as an async task.
 
-        if(transcriber):
-            self.transcriber = transcriber
-        else:
-            self.transcriber = WhisperTranscriber()
+        :param transcriber: A Transcriber instance (WhisperTranscriber by default).
+        :param speech_timeout: The amount of silence (in seconds) required to consider speech ended.
+        :return: An instance of DiscordVoiceInput.
+        """
+        instance = cls(speech_timeout)
 
-        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
-        EventBusSingleton.subscribe(VolumeUpdatedEvent(None, AudioType.DISCORD, AudioDirection.INPUT), self.onInputVolumeUpdate)
+        if transcriber:
+            instance.transcriber = transcriber
 
-        EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
-        EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
+        # Subscribe to relevant events
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), instance.stop)
+        EventBusSingleton.subscribe(
+            VolumeUpdatedEvent(None, AudioType.DISCORD, AudioDirection.INPUT),
+            instance.on_input_volume_update
+        )
 
-        EventBusSingleton.subscribe(BotReadyEvent, self.onBotReady)
+        EventBusSingleton.subscribe(VoiceChannelConnectedEvent, instance.on_voice_channel_connected)
+        EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, instance.on_voice_channel_disconnected)
+        EventBusSingleton.subscribe(BotReadyEvent, instance.on_bot_ready)
 
-        # create task
-        task = asyncio.create_task(self.run())
+        # Create a long-running task for reading audio data
+        task = asyncio.create_task(instance.run())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Discord Voice Input"))
+        return instance
 
-        return self
-    
     async def run(self):
+        """
+        Main loop that polls audio data from the stream_sink and processes it.
+        """
         while not self.stopped:
-            if self.stream_sink.has_data() and self.voice_connection != None:
-                
-                ## Consume Audio
-                # blocks until data is available, then returns the user id and audio segment
+            if self.stream_sink.has_data() and self.voice_connection is not None:
                 data = self.stream_sink.pop_data()
-
-                if(data is None):
-                    continue
-
-                user_id, audio_segment = data
-
-                isSpeakingProbability = detectVoiceActivity(audio_segment)
-
-                user_str = str(user_id)
-
-                if isSpeakingProbability > speech_sensitivity_threshold and not self.speechRecordingTriggeredByUser.get(user_id, False):
-                    # check if this is the first user to speak
-                    if not any(self.speechRecordingTriggeredByUser.values()):
-                        # if so, notify that user speech has started
-                        await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.INPUT))
-                        
-                    self.speechRecordingTriggeredByUser[user_id] = True
-
-                    print("{0} started speaking".format(user_str))
-
-                if self.speechRecordingTriggeredByUser.get(user_id, False):
-                    # initialize speech buffer for user if it doesn't exist
-                    if user_id not in self.speechBufferByUser:
-                        self.speechBufferByUser[user_id] = []
-
-                    self.speechBufferByUser[user_id].append(audio_segment)
-
-                if isSpeakingProbability <= speech_sensitivity_threshold and self.speechRecordingTriggeredByUser.get(user_id, False):
-                    if user_id not in self.noSpeechTimeByUser:
-                        self.noSpeechTimeByUser[user_id] = 0
-
-                    self.noSpeechTimeByUser[user_id] += 0.03
-
-                    if self.noSpeechTimeByUser[user_id] >= self.speech_timeout:
-                        self.speechRecordingTriggeredByUser[user_id] = False
-
-                        print("{0} stopped speaking".format(user_str))
-
-                        speech_buffer = self.speechBufferByUser[user_id]
-
-                        if self.client:
-                            try:
-                                discord_user: discord.User = await self.client.fetch_user(user_id)
-                                if discord_user:
-                                    user_str = discord_user.display_name
-                            except(discord.NotFound, discord.HTTPException):
-                                pass
-
-                        loop = asyncio.get_running_loop()
-                        # the transcription method is blocking and slow so we run it in a separate thread
-                        Thread(target=self.transcribeSpeechAndPublish, args=(speech_buffer, user_str, loop)).start()
-
-                        # reset speech buffer
-                        self.speechBufferByUser[user_id] = []
-
-                        # reset no speech time
-                        self.noSpeechTimeByUser[user_id] = 0
-
+                if data is not None:
+                    user_id, audio_segment = data
+                    await self._process_audio_chunk(user_id, audio_segment)
             else:
-                # if there's no data, wait for 10 ms (audio chunk is 30 ms long)
+                # Sleep briefly to reduce CPU usage if no data is available
                 await asyncio.sleep(0.01)
-                continue
-        
+
         print("DiscordVoiceInput stopped")
-        self.stream_sink.cleanup()
-        await self.cleanup()
+        await self._cleanup()
 
-    # converts the audio segments to a single numpy array and transcribes it
-    def transcribeSpeechAndPublish(self, speechBuffer: list[AudioSegment], user: str, loop: asyncio.AbstractEventLoop):
-        # Concatenate all the AudioSegments
-        combined = AudioSegment.empty()
-        for segment in speechBuffer:
-            combined += segment
+    async def _process_audio_chunk(self, user_id: int, audio_segment: AudioSegment):
+        """
+        Processes a chunk of audio for a given user:
+        1. Detects if user is speaking via VAD.
+        2. Handles transitions between speaking and silence.
+        3. Buffers audio for transcription when speaking is detected.
+        """
+        # Detect speech
+        is_speaking_probability = detectVoiceActivity(audio_segment)
 
-        # transcribe speech
-        transcribed_speech = self.transcriber.transcribeSpeech(combined, self.inputGain)
+        # If the user transitions to speaking
+        if (is_speaking_probability > speech_sensitivity_threshold
+                and not self.speech_recording_triggered_by_user.get(user_id, False)):
+            await self._start_user_speaking(user_id)
 
-        if transcribed_speech == "" or transcribed_speech == None:
+        # If user is currently speaking, buffer the segment
+        if self.speech_recording_triggered_by_user.get(user_id, False):
+            self._append_to_speech_buffer(user_id, audio_segment)
+
+        # If user transitions from speaking to silence
+        if (is_speaking_probability <= speech_sensitivity_threshold
+                and self.speech_recording_triggered_by_user.get(user_id, False)):
+            await self._handle_user_silence(user_id)
+
+    async def _start_user_speaking(self, user_id: int):
+        """
+        Marks a user as speaking and sends a SpeakingStateUpdate event if this is the first user to speak.
+        """
+        if not any(self.speech_recording_triggered_by_user.values()):
+            # If this is the first user to speak among all participants
+            await EventBusSingleton.publish(SpeakingStateUpdate(True, AudioType.DISCORD, AudioDirection.INPUT))
+
+        self.speech_recording_triggered_by_user[user_id] = True
+        print(f"User {user_id} started speaking")
+
+    def _append_to_speech_buffer(self, user_id: int, audio_segment: AudioSegment):
+        """
+        Appends the latest audio segment to the user's speech buffer.
+        """
+        if user_id not in self.speech_buffer_by_user:
+            self.speech_buffer_by_user[user_id] = []
+        self.speech_buffer_by_user[user_id].append(audio_segment)
+
+    async def _handle_user_silence(self, user_id: int):
+        """
+        Tracks silence duration. If it exceeds self.speech_timeout, mark user as no longer speaking and
+        transcribe buffered audio.
+        """
+        self.no_speech_time_by_user[user_id] = self.no_speech_time_by_user.get(user_id, 0) + 0.03
+
+        if self.no_speech_time_by_user[user_id] >= self.speech_timeout:
+            self.speech_recording_triggered_by_user[user_id] = False
+            print(f"User {user_id} stopped speaking")
+
+            # Attempt to fetch the user display name
+            user_name = str(user_id)
+            if self.client:
+                try:
+                    discord_user: discord.User = await self.client.fetch_user(user_id)
+                    if discord_user:
+                        user_name = discord_user.display_name
+                except (discord.NotFound, discord.HTTPException):
+                    pass
+
+            # Transcription in a separate thread since transcriber process may be both long and blocking
+            speech_buffer = self.speech_buffer_by_user[user_id]
+            self.speech_buffer_by_user[user_id] = []
+            loop = asyncio.get_running_loop()
+            Thread(
+                target=self._transcribe_speech_and_publish,
+                args=(speech_buffer, user_name, loop),
+                daemon=True
+            ).start()
+
+            self.no_speech_time_by_user[user_id] = 0
+
+    def _transcribe_speech_and_publish(self, speech_buffer: list[AudioSegment], user_name: str, loop: asyncio.AbstractEventLoop):
+        """
+        Concatenates all audio segments in the buffer, transcribes the audio, and publishes a UserInputEvent.
+        Runs in a separate thread to avoid blocking the main async loop.
+        """
+        combined_audio = AudioSegment.empty()
+        for segment in speech_buffer:
+            combined_audio += segment
+
+        transcription = self.transcriber.transcribeSpeech(combined_audio, self.input_gain)
+        if not transcription:
             return
-        
+
         if debug_mode:
-            print("[voice] {0}: {1}".format(user, transcribed_speech))
+            print(f"[voice] {user_name}: {transcription}")
 
-        # publish to pipeline
-        coroutine = EventBusSingleton.publish(UserInputEvent(transcribed_speech, self, SystemInputType.DISCORD_VOICE, user_name=user, priority=2))
-        asyncio.run_coroutine_threadsafe(coroutine, loop)
+        # Publish the transcribed text as user input
+        publish_coroutine = EventBusSingleton.publish(
+            UserInputEvent(
+                transcription,
+                self,
+                SystemInputType.DISCORD_VOICE,
+                user_name=user_name,
+                priority=2
+            )
+        )
+        asyncio.run_coroutine_threadsafe(publish_coroutine, loop)
 
-        # all users have ceased speaking and transcription is complete
-        if not any(self.speechRecordingTriggeredByUser.values()):
-            # notify that user speech has ended
-            coroutine = EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT))
-            asyncio.run_coroutine_threadsafe(coroutine, loop)
+        # If no one else is speaking, send event indicating speech ended
+        if not any(self.speech_recording_triggered_by_user.values()):
+            end_speaking_coroutine = EventBusSingleton.publish(
+                SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.INPUT)
+            )
+            asyncio.run_coroutine_threadsafe(end_speaking_coroutine, loop)
 
-
-    def onInputVolumeUpdate(self, event: VolumeUpdatedEvent):
-        self.input_gain = event.volume
+    def on_input_volume_update(self, event: VolumeUpdatedEvent):
+        """
+        Event handler: Adjusts the voice input gain in response to a volume update event.
+        """
+        if event.volume:
+            self.input_gain = event.volume
+        else:
+            self.input_gain = 1.0
 
     def stop(self, event: CommandEvent):
+        """
+        Event handler: Stops processing voice data when a STOP command is received.
+        """
         self.stopped = True
 
-    def onBotReady(self, event:BotReadyEvent):
+    def on_bot_ready(self, event: BotReadyEvent):
+        """
+        Event handler: Sets the Discord client when the bot is ready.
+        """
         self.client = event.client
 
-    async def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
+    async def on_voice_channel_connected(self, event: VoiceChannelConnectedEvent):
+        """
+        Event handler: Starts recording when the bot successfully joins a voice channel.
+        """
         self.voice_connection = event.voice_client
 
-        # play sample to initialize the voice client
-        sample = open("audio/startup.wav", 'rb')
-        self.voice_connection.play(discord.PCMAudio(sample))
-        self.voice_connection.start_recording(sink=self.stream_sink, callback=self.recording_stopped_callback)
+        # Play a startup sound
+        # AFAIK, playing audio is required to initiate the voice connection and thus must come before recording
+        with open("audio/startup.wav", 'rb') as sample:
+            self.voice_connection.play(discord.PCMAudio(sample))
 
-    def onVoiceChannelDisconnected(self, event: VoiceChannelDisconnectedEvent):
-        if self.voice_connection == None:
-            return
+        self.voice_connection.start_recording(
+            sink=self.stream_sink,
+            callback=lambda: None # Not currently doing anything when recording complete
+        )
 
-        self.voice_connection.stop_recording()
-        self.voice_connection = None
+    def on_voice_channel_disconnected(self, event: VoiceChannelDisconnectedEvent):
+        """
+        Event handler: Stops recording and resets voice connection when bot leaves a voice channel.
+        """
+        if self.voice_connection:
+            self.voice_connection.stop_recording()
+            self.voice_connection = None
 
-    def recording_stopped_callback(self):
-        pass
-
-    async def cleanup(self):
-        if not self.voice_connection:
-            return
-
-        await self.voice_connection.disconnect()
+    async def _cleanup(self):
+        """
+        Cleanup method to disconnect from the voice channel if connected and turn off the stream sink buffering.
+        """
+        self.stream_sink.cleanup()
+        if self.voice_connection:
+            await self.voice_connection.disconnect()
+            await EventBusSingleton.publish(VoiceChannelDisconnectedEvent())
