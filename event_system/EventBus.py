@@ -4,6 +4,11 @@ from typing import Callable, Coroutine, Dict, List, Type, Any, Tuple, Union, Typ
 from event_system import Event
 
 AnyEvent = TypeVar('AnyEvent', bound=Event)
+"""
+AnyEvent is a TypeVar that is bound to the Event class.
+
+We do this because, by default, using the Event class directly refers to only the Event class, not any subtypes.
+"""
 
 EventHandler = Union[Callable[[AnyEvent], None], Callable[[AnyEvent], Coroutine[Any,Any,None]]]
 
@@ -20,17 +25,10 @@ class EventBus:
     EventSubscriptions = Dict[Type[AnyEvent], List[Subscriber]]
 
     def __init__(self):
-        """
-        Init function.
-
-        Private fields:
-        _subscribers (Dict[Type, List[Tuple[Callable[[Event], None], Callable[[Event], bool]]]):
-            A dictionary that maps an event type to pairs of subscriber handlers and filter functions.
-            These represent the handlers that are subscribed to the event type and the filter functions
-            used to determine if an event should be passed to the handler.
-        """
-
-        self._subscribers: EventBus.EventSubscriptions = {}
+        self._subscribers: EventBus.EventSubscriptions = {}        
+        """A dictionary that maps an event type to pairs of :class:`EventHandler` and :class:`EventFilter`.
+            The :meth:`publish` method notifies subscribers from this dictionary by looking up the published event by type,
+            checking the published event against all :class:`EventFilter` functions, and calling the corresponding :class:`EventHandler` functions."""
 
     def subscribe(self, event: Event|Type[Event], handler: EventHandler):
         """
@@ -72,31 +70,6 @@ class EventBus:
                 (h, f) for h, f in self._subscribers[event_class] if h != handler
             ]
 
-    def _create_filter_func(self, filter: Event|Type[Event]) -> EventFilter:
-        """
-        Creates a filter function for an event based on the provided event instance or type.
-
-        This filter function 
-        
-        Args:
-            filter_event (Any): An instance of a dataclass with fields used for filtering events.
-        
-        Returns:
-            Callable[[Any], bool]: A function that takes an event and returns True if the event
-                                   matches the filter criteria, otherwise False.
-        """
-        def filter_func(event: Event) -> bool:
-            return all(
-                # if an event is passed like Event(arg=None), do not filter on that arg
-                value is None
-                # if an event is passed like Event(arg=AType), allow all events with `arg` of that type
-                or ( isinstance(value, Type) and isinstance(getattr(event, name), type(value)) ) 
-                # if an event is passed like Event(arg=1), allow all events with `arg` of that value
-                or getattr(event, name) == getattr(filter, name)
-                # ... for all variables in the filter event
-                for name, value in vars(filter).items())
-        return filter_func
-
     async def publish(self, event: Event):
         """
         Publishes an event to all subscribed handlers that match the event's type and filter criteria.
@@ -115,3 +88,40 @@ class EventBus:
                         await handler(event)
                     else:
                         handler(event)
+
+    def _create_filter_func(self, event_filter: Event) -> EventFilter:
+        """
+        Creates a filter function for the given event instance.
+
+        The returned function checks:
+          - If a field value in `event_filter` is None, it does not filter on that field.
+          - If a field value is a type, the corresponding event's field must be an instance of that type.
+          - Otherwise, the event's field must match the `event_filter` value exactly.
+
+        Args:
+            event_filter: An Event instance with field values used for filtering.
+
+        Returns:
+            A callable that takes an Event and returns True if it matches the filter criteria,
+            and False otherwise.
+        """
+        def filter_func(event: Event) -> bool:
+            for field_name, filter_value in vars(event_filter).items():
+                # Skip fields explicitly set to None, meaning "ignore this field"
+                if filter_value is None:
+                    continue
+
+                event_value = getattr(event, field_name, None)
+
+                # If the filter_value is a type, ensure the event_value is an instance of that type
+                if isinstance(filter_value, type):
+                    if not isinstance(event_value, filter_value):
+                        return False
+                else:
+                    # Otherwise, require an exact match
+                    if event_value != filter_value:
+                        return False
+
+            return True
+
+        return filter_func
