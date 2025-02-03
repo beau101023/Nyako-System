@@ -16,8 +16,8 @@ class ConversationSessionProcessor(Pipe):
         super().__init__()
         self.buffer_size = buffer_size
 
-        self.subscribeAll(listen_to, self.onMessage)
-        self.subscribeAll(track_outputs_from, self.onOutputDelivered)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(track_outputs_from, self.onOutputDelivered)
 
     @classmethod
     async def create(cls, listen_to: MessageSource | list[MessageSource], track_LLM_outputs_from: MessageSource = OutputDeliveryEvent, buffer_size=10):

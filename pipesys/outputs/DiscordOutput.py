@@ -10,7 +10,7 @@ class DiscordOutput(Pipe):
         super().__init__()
         self.sendChannel: discord.abc.MessageableChannel | None = None
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: Pipe | MessageEvent | type[MessageEvent]):

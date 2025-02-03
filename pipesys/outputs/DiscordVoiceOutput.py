@@ -39,7 +39,7 @@ class DiscordVoiceOutput(Pipe):
         EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
         EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
-        self.subscribeAll(listen_to, self.handleMessage)
+        self.subscribe_to_message_sources(listen_to, self.handleMessage)
 
         EventBusSingleton.subscribe(SpeakingStateUpdate(audio_direction=AudioDirection.INPUT), self.onUserSpeakingStateChange)
         task = asyncio.create_task(self.playback_loop())

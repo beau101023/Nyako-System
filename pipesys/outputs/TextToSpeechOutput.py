@@ -31,7 +31,7 @@ class TextToSpeechOutput(Pipe):
 
         # subscribe to events
         EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
         EventBusSingleton.subscribe(VolumeUpdatedEvent(audio_type=AudioType.SYSTEM, audio_direction=AudioDirection.OUTPUT), self.onVolumeUpdate)
 
         # notify system that tts is ready

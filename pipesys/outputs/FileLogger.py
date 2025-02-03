@@ -28,7 +28,7 @@ class FileLogger(Pipe):
         self.logfile_path = ("logs/log" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".txt")
         os.makedirs(os.path.dirname(self.logfile_path), exist_ok=True)
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: MessageEvent|Pipe|type[MessageEvent]):

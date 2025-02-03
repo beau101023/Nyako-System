@@ -35,7 +35,7 @@ class AdminPanel(Pipe):
 
         self.create_text_display()
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: MessageSource) -> 'AdminPanel':

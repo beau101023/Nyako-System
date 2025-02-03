@@ -8,7 +8,7 @@ class Pipe(ABC):
     """
     Marker interface for classes which take input and give output as part of a pipeline using EventBus.
     """
-    def subscribeAll(self, listen_to: MessageSource | list[MessageSource], callback):
+    def subscribe_to_message_sources(self, listen_to: MessageSource | list[MessageSource], callback):
         if not isinstance(listen_to, list):
             listen_to = [listen_to]
 

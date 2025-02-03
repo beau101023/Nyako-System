@@ -42,7 +42,7 @@ class VisualOutput(Pipe):
         self.setEmote("images/neutral.png")
         self.setText("[listening]")
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: MessageSource, parent=None):

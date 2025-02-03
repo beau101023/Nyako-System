@@ -11,7 +11,7 @@ class ConsoleOutput(Pipe):
     def __init__(self, listen_to: MessageSource):
         super().__init__()
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
     async def create(cls, listen_to: MessageSource):

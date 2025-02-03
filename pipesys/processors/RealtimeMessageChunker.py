@@ -25,7 +25,7 @@ class RealtimeMessageChunker(Pipe):
         self.event_queue: list[UserInputEvent] = []
         self.last_no_input_sent_time: datetime = datetime.now()
 
-        self.subscribeAll(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
