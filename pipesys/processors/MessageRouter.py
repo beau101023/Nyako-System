@@ -1,13 +1,22 @@
 import re
 
 from event_system import EventBusSingleton
+from event_system.events.LLMOutput import (
+    InactiveCommandEvent,
+    InactiveOutputEvent,
+    InvalidTagEvent,
+    NoTagsEvent,
+)
+from event_system.events.Pipeline import (
+    MessageEvent,
+    OutputAvailabilityEvent,
+    OutputRoutingEvent,
+    SystemOutputType,
+)
+from event_system.events.System import CommandAvailabilityEvent, CommandEvent, CommandType
 from pipesys import Pipe
-
 from settings import debug_mode
 
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputRoutingEvent
-from event_system.events.System import CommandEvent, CommandAvailabilityEvent, CommandType
-from event_system.events.LLMOutput import InvalidTagEvent, InactiveOutputEvent, InactiveCommandEvent, NoTagsEvent
 
 class MessageRouter(Pipe):
     def __init__(self, listen_to: Pipe):
@@ -25,7 +34,7 @@ class MessageRouter(Pipe):
         message = event.message
 
         # discard if message is none, empty, or only whitespace
-        if message == None or message.strip() == "":
+        if message is None or message.strip() == "":
             return
 
         # Split the message by tag.
@@ -73,7 +82,7 @@ class MessageRouter(Pipe):
 
             # If `i` is a valid output tag and it's followed by a non-tag part, handle it
             if SystemOutputType.fromString(tag):
-                message = parts[i+1]
+                message = parts[i + 1]
                 await self.handle_output_tag(tag, message)
                 i += 2
                 continue
@@ -83,7 +92,7 @@ class MessageRouter(Pipe):
 
     async def handle_command_tag(self, tag: str) -> None:
         command = CommandType.fromString(tag)
-        if command == None:
+        if command is None:
             await EventBusSingleton.publish(InvalidTagEvent(tag))
         elif command in self.active_commands:
             await EventBusSingleton.publish(CommandEvent(command))
@@ -98,21 +107,23 @@ class MessageRouter(Pipe):
         tag (str): the tag to handle
         message (str): the message to handle
         """
-        output_types: list[SystemOutputType]|None = SystemOutputType.fromString(tag)
-        if output_types == None:
+        output_types: list[SystemOutputType] | None = SystemOutputType.fromString(tag)
+        if output_types is None:
             await EventBusSingleton.publish(InvalidTagEvent(tag))
             return
-        
+
         for output_type in output_types:
             if output_type in self.active_outputs:
                 if debug_mode:
-                    await EventBusSingleton.publish(OutputRoutingEvent(message, self, SystemOutputType.ALL))
+                    await EventBusSingleton.publish(
+                        OutputRoutingEvent(message, self, SystemOutputType.ALL)
+                    )
                 else:
                     await EventBusSingleton.publish(OutputRoutingEvent(message, self, output_type))
             else:
                 await EventBusSingleton.publish(InactiveOutputEvent(message, output_type))
 
-    def get_first_tag_in_list(self, list: list[str]) -> int|None:
+    def get_first_tag_in_list(self, list: list[str]) -> int | None:
         """
         Returns the index of the first valid tag in a list of strings.
 
@@ -123,7 +134,7 @@ class MessageRouter(Pipe):
             if self.is_tag(part):
                 return i
         return None
-    
+
     def is_tag(self, candidate: str) -> bool:
         """
         Returns whether a string is a tag.
@@ -131,17 +142,17 @@ class MessageRouter(Pipe):
         Parameters:
         candidate (str): the string to check
         """
-        return not re.match(r'\[.*?\]', candidate) == None
+        return re.match(r"\[.*?\]", candidate) is not None
 
     def splitByTag(self, message: str) -> list[str]:
         """
         Splits a message into a list[str] of the format [tag, message, tag, message, ...]
             when the initial message is of the form `[tag] message [tag] message`.
-        
+
         Parameters:
         message (str): the message to split
         """
-        return re.split(r'(\[.*?\])', message)
+        return re.split(r"(\[.*?\])", message)
 
     async def onOutputStateChanged(self, event: OutputAvailabilityEvent):
         if event.output_available:

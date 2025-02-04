@@ -1,11 +1,11 @@
 # thanks to https://github.com/ScruffyTheMoose for converting sinks for streaming
 # https://github.com/ScruffyTheMoose/HushVC/blob/main/app/custom_core.py
 
-from discord.sinks.core import Sink
-from discord import VoiceClient
-from pydub import AudioSegment
 from queue import Queue
-from typing import Dict
+
+from discord import VoiceClient
+from discord.sinks.core import Sink
+from pydub import AudioSegment
 
 
 class StreamSink(Sink):
@@ -15,16 +15,18 @@ class StreamSink(Sink):
         self.encoding = "wav"
 
         # obj to store our super sweet awesome audio data
-        self.byte_buffer: Dict[int, bytearray] = {}  # bytes
+        self.byte_buffer: dict[int, bytearray] = {}  # bytes
         # holds buffers of data for each user
-        self.segment_buffer: Dict[int, Queue[AudioSegment]] = {}
+        self.segment_buffer: dict[int, Queue[AudioSegment]] = {}
 
         # audio data specifications
         self.sample_width = 2
         self.channels = 2
         self.sample_rate = 48000
         self.bytes_ps = 64000  # bytes added to buffer per second. automatically set in StreamSink.set_voice_client
-        self.block_len = 0.032 * 3  # length in seconds * sample_rate/16000hz (downsampling ratio) * channels
+        self.block_len = (
+            0.032 * 3
+        )  # length in seconds * sample_rate/16000hz (downsampling ratio) * channels
         # min len to pull bytes from buffer
         self.buff_lim = int(self.bytes_ps * self.block_len)
 
@@ -44,7 +46,6 @@ class StreamSink(Sink):
 
     # method for adding data to the buffer
     def write(self, data, user) -> None:
-
         # creating byte buffer for user if it doesn't exist
         if user not in self.byte_buffer:
             self.byte_buffer[user] = bytearray()
@@ -52,19 +53,19 @@ class StreamSink(Sink):
         self.byte_buffer[user] += data  # data is a bytearray object
         # checking amount of data in the buffer
         if len(self.byte_buffer[user]) > self.buff_lim:
-
             # grabbing slice from the buffer to work with
-            byte_slice = self.byte_buffer[user][:self.buff_lim]
+            byte_slice = self.byte_buffer[user][: self.buff_lim]
 
             # creating AudioSegment object with the slice
-            audio_segment = AudioSegment(data=byte_slice,
-                                         sample_width=self.sample_width,
-                                         frame_rate=self.sample_rate,
-                                         channels=self.channels,
-                                         )
+            audio_segment = AudioSegment(
+                data=byte_slice,
+                sample_width=self.sample_width,
+                frame_rate=self.sample_rate,
+                channels=self.channels,
+            )
 
             # removing the old stinky trash data from buffer - ew get it out of there already
-            self.byte_buffer[user] = self.byte_buffer[user][self.buff_lim:]
+            self.byte_buffer[user] = self.byte_buffer[user][self.buff_lim :]
             # ok much better now
 
             # creating queue for user if it doesn't exist
@@ -74,7 +75,7 @@ class StreamSink(Sink):
             try:
                 # adding AudioSegment to the user's queue
                 self.segment_buffer[user].put(audio_segment, timeout=0.05)
-            except:
+            except Exception:
                 # if the queue is full, we'll consume a segment ourselves and then insert the new one
                 #  we consume and insert rather than dropping the new segment because we want to
                 #  ensure we aren't reacting to audio that is too old

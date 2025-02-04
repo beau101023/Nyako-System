@@ -1,11 +1,12 @@
 import asyncio
+
 from aioconsole import ainput
 
-from event_system.events.Pipeline import UserInputEvent, SystemInputType
+from event_system import EventBus, EventBusSingleton
+from event_system.events.Pipeline import SystemInputType, UserInputEvent
 from event_system.events.System import TaskCreatedEvent
-from event_system import EventBus
-from event_system import EventBusSingleton
 from pipesys.Pipe import Pipe
+
 
 class ConsoleInput(Pipe):
     event_bus: EventBus

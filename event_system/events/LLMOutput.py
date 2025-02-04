@@ -5,12 +5,15 @@ from event_system import Event
 from .Pipeline import SystemOutputType
 from .System import CommandType
 
+
 @dataclass
 class NoTagsEvent(Event):
     """
     A dataclass representing an event raised when the language model does not provide any tags for routing a message.
     """
+
     pass
+
 
 @dataclass
 class InvalidTagEvent(Event):
@@ -21,7 +24,9 @@ class InvalidTagEvent(Event):
     message (string): the text associated with the erroneous output
     tag (string): the malformed tag text, or none if no tag was provided
     """
+
     tag: str
+
 
 @dataclass
 class InactiveOutputEvent(Event):
@@ -32,8 +37,10 @@ class InactiveOutputEvent(Event):
     message (string): the text associated with the erroneous output
     output_target (SystemOutputType): the target output that was unavailable
     """
+
     message: str
     tag: SystemOutputType
+
 
 @dataclass
 class InactiveCommandEvent(Event):
@@ -44,4 +51,5 @@ class InactiveCommandEvent(Event):
     message (string): the text associated with the erroneous command
     command (CommandType): the command that was unavailable
     """
+
     command: CommandType

@@ -1,9 +1,15 @@
 import discord
-from event_system.EventBusSingleton import EventBusSingleton
 
+from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.Discord import TextChannelConnectedEvent
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputDeliveryEvent
-from pipesys import Pipe, MessageSource
+from event_system.events.Pipeline import (
+    MessageEvent,
+    OutputAvailabilityEvent,
+    OutputDeliveryEvent,
+    SystemOutputType,
+)
+from pipesys import MessageSource, Pipe
+
 
 class DiscordOutput(Pipe):
     def __init__(self, listen_to: MessageSource | list[MessageSource]):

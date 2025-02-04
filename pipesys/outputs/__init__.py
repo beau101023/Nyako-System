@@ -1,9 +1,9 @@
-from .ConsoleOutput import ConsoleOutput
-from .DiscordOutput import DiscordOutput
-from .DiscordVoiceOutput import DiscordVoiceOutput
-from .VisualOutput import VisualOutput
-from .PipelineMonitor import PipelineMonitor
-from .FileLogger import FileLogger
+from .ConsoleOutput import ConsoleOutput as ConsoleOutput
+from .DiscordOutput import DiscordOutput as DiscordOutput
+from .DiscordVoiceOutput import DiscordVoiceOutput as DiscordVoiceOutput
+from .FileLogger import FileLogger as FileLogger
+from .PipelineMonitor import PipelineMonitor as PipelineMonitor
+from .VisualOutput import VisualOutput as VisualOutput
 
 ## Not imported by default due to need to run VSCode as administrator to use
-#from .TextToSpeechOutput import TextToSpeechOutput
+# from .TextToSpeechOutput import TextToSpeechOutput

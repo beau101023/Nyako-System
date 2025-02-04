@@ -1,12 +1,11 @@
 import discord
+
 from event_system.EventBusSingleton import EventBusSingleton
-
-from event_system.events.Pipeline import SystemInputType, UserInputEvent
-from event_system.events.System import CommandEvent, CommandType, StartupStage, StartupEvent
-from event_system.events.System import StartupStage
-
 from event_system.events.Discord import BotReadyEvent, TextChannelConnectedEvent
+from event_system.events.Pipeline import SystemInputType, UserInputEvent
+from event_system.events.System import CommandEvent, CommandType
 from pipesys import Pipe
+
 
 class DiscordInput(Pipe):
     client: discord.Client
@@ -26,7 +25,7 @@ class DiscordInput(Pipe):
         EventBusSingleton.subscribe(BotReadyEvent, self.onBotReady)
 
         return self
-    
+
     async def onTextChannelConnect(self, event: TextChannelConnectedEvent):
         self.listeningChannel = event.channel
 
@@ -41,10 +40,12 @@ class DiscordInput(Pipe):
         if message.author.id == self.client.user.id:
             return
 
-        if(message.channel != self.listeningChannel):
+        if message.channel != self.listeningChannel:
             return
-        
-        inputEvent = UserInputEvent(message.content, self, SystemInputType.DISCORD, user_name= message.author.name)
+
+        inputEvent = UserInputEvent(
+            message.content, self, SystemInputType.DISCORD, user_name=message.author.name
+        )
         await EventBusSingleton.publish(inputEvent)
 
     async def onStop(self, event: CommandEvent):

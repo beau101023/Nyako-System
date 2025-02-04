@@ -1,15 +1,15 @@
 import asyncio
 
 from event_system.EventBusSingleton import EventBusSingleton
-
 from event_system.events.System import CommandEvent, CommandType
+
 
 # simple class to manage sleep/wake events
 class SleepManager:
     wake_event: asyncio.Event
 
     @classmethod
-    async def create(cls) -> 'SleepManager':
+    async def create(cls) -> "SleepManager":
         self = SleepManager()
         self.wake_event = asyncio.Event()
         EventBusSingleton.subscribe(CommandEvent(CommandType.SLEEP), self.sleep)
@@ -17,7 +17,7 @@ class SleepManager:
         return self
 
     async def sleep(self, event: CommandEvent):
-        await self.sleep_for(60*60) # 1 hour
+        await self.sleep_for(60 * 60)  # 1 hour
 
     async def sleep_for(self, sleep_length: int):
         _ = asyncio.create_task(self.wakeLaterTask(sleep_length))

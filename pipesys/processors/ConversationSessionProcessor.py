@@ -1,18 +1,29 @@
-from LLM.nyako_llm import ConversationSession
-from pipesys import Pipe, MessageSource
-import settings
 import openai
 
+import settings
 from event_system import EventBusSingleton
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, OutputDeliveryEvent, SystemOutputType
+from event_system.events.Pipeline import (
+    MessageEvent,
+    OutputAvailabilityEvent,
+    OutputDeliveryEvent,
+    SystemOutputType,
+)
 from event_system.events.System import CommandEvent, CommandType
+from LLM.nyako_llm import ConversationSession
+from pipesys import MessageSource, Pipe
+
 
 class ConversationSessionProcessor(Pipe):
     conversation_session: ConversationSession
     available_outputs: set[SystemOutputType]
     buffer_size: int
 
-    def __init__(self, listen_to: MessageSource | list[MessageSource], track_outputs_from: MessageSource, buffer_size=10):
+    def __init__(
+        self,
+        listen_to: MessageSource | list[MessageSource],
+        track_outputs_from: MessageSource,
+        buffer_size=10,
+    ):
         super().__init__()
         self.buffer_size = buffer_size
 
@@ -20,12 +31,17 @@ class ConversationSessionProcessor(Pipe):
         self.subscribe_to_message_sources(track_outputs_from, self.onOutputDelivered)
 
     @classmethod
-    async def create(cls, listen_to: MessageSource | list[MessageSource], track_LLM_outputs_from: MessageSource = OutputDeliveryEvent, buffer_size=10):
+    async def create(
+        cls,
+        listen_to: MessageSource | list[MessageSource],
+        track_LLM_outputs_from: MessageSource = OutputDeliveryEvent,
+        buffer_size=10,
+    ):
         self = ConversationSessionProcessor(listen_to, track_LLM_outputs_from, buffer_size)
 
         EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputsChange)
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
-        
+
         # valid output tags
         self.available_outputs = set()
 
@@ -36,22 +52,23 @@ class ConversationSessionProcessor(Pipe):
 
     async def onMessage(self, event: MessageEvent):
         try:
-            async for response_chunk in self.conversation_session.stream_query(str(event), self.buffer_size):
+            async for response_chunk in self.conversation_session.stream_query(
+                str(event), self.buffer_size
+            ):
                 await EventBusSingleton.publish(MessageEvent(response_chunk, self))
         except openai.APIError as e:
             print(e.message)
         self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
 
     async def onOutputDelivered(self, event: MessageEvent):
-        if(event.message):
+        if event.message:
             await self.conversation_session.addLLMMessageToContext(event.message)
 
     async def onOutputsChange(self, event: OutputAvailabilityEvent):
-        
-        if not event.output_type in self.available_outputs and not event.output_available:
+        if event.output_type not in self.available_outputs and not event.output_available:
             return
-        
-        if(event.output_available):
+
+        if event.output_available:
             self.available_outputs.add(event.output_type)
         else:
             self.available_outputs.remove(event.output_type)
@@ -61,11 +78,13 @@ class ConversationSessionProcessor(Pipe):
     def getSystemPrompt(self):
         valid_tags = [output.toString() for output in self.available_outputs]
 
-        if(len(self.available_outputs) > 0):
-            return settings.chat_model_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
+        if len(self.available_outputs) > 0:
+            return (
+                settings.chat_model_prompt + " Available outputs: [" + "], [".join(valid_tags) + "]"
+            )
         else:
             return settings.chat_model_prompt
-        
+
     async def onStop(self, event: CommandEvent):
         if settings.memorize_enabled:
             await self.conversation_session.memorizeAll()

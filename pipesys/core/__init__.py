@@ -1,3 +1,3 @@
-from .DiscordClientRunner import DiscordClientRunner
-from .SleepManager import SleepManager
-from .AdminPanel import AdminPanel
+from .AdminPanel import AdminPanel as AdminPanel
+from .DiscordClientRunner import DiscordClientRunner as DiscordClientRunner
+from .SleepManager import SleepManager as SleepManager

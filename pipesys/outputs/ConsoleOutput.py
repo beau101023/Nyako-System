@@ -1,6 +1,11 @@
 from event_system.EventBusSingleton import EventBusSingleton
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType, OutputDeliveryEvent
-from pipesys import Pipe, MessageSource
+from event_system.events.Pipeline import (
+    MessageEvent,
+    OutputAvailabilityEvent,
+    OutputDeliveryEvent,
+    SystemOutputType,
+)
+from pipesys import MessageSource, Pipe
 
 
 class ConsoleOutput(Pipe):
@@ -31,7 +36,7 @@ class ConsoleOutput(Pipe):
     async def onMessage(self, event: MessageEvent):
         """
         Outputs a message to the console asynchonously.
-        
+
         Parameters:
         message (str): the message to output
         """

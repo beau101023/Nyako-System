@@ -1,18 +1,37 @@
 import asyncio
 
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QSlider, QCheckBox, QPushButton, QWidget, QLabel, QFrame, QLineEdit
+from discord import TextChannel, VoiceChannel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
-from discord import TextChannel, VoiceChannel
-from overrides import override
-
-from event_system.events.Audio import AudioDirection, AudioType, VolumeUpdatedEvent
-from event_system.events.System import CommandEvent, CommandType, CommandAvailabilityEvent, StartupEvent, StartupStage, TaskCreatedEvent
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
 
 from event_system import EventBusSingleton
+from event_system.events.Audio import AudioDirection, AudioType, VolumeUpdatedEvent
+from event_system.events.Discord import (
+    BotReadyEvent,
+    TextChannelConnectedEvent,
+    VoiceChannelConnectedEvent,
+)
 from event_system.events.Pipeline import MessageEvent
-from event_system.events.Discord import BotReadyEvent, TextChannelConnectedEvent, VoiceChannelConnectedEvent
-from pipesys import Pipe, MessageSource
+from event_system.events.System import (
+    CommandAvailabilityEvent,
+    CommandEvent,
+    CommandType,
+    StartupEvent,
+    StartupStage,
+    TaskCreatedEvent,
+)
+from pipesys import MessageSource, Pipe
+
 
 class AdminPanel(Pipe):
     def __init__(self, listen_to: MessageSource):
@@ -38,7 +57,7 @@ class AdminPanel(Pipe):
         self.subscribe_to_message_sources(listen_to, self.onMessage)
 
     @classmethod
-    async def create(cls, listen_to: MessageSource) -> 'AdminPanel':
+    async def create(cls, listen_to: MessageSource) -> "AdminPanel":
         self = AdminPanel(listen_to)
 
         task = asyncio.create_task(self.run_admin_panel())
@@ -49,14 +68,14 @@ class AdminPanel(Pipe):
         EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.publish_volume_defaults)
 
         return self
-    
+
     def create_right_panel(self) -> QWidget:
         panel = QWidget()
         layout = QVBoxLayout()
         panel.setLayout(layout)
 
         self.right_layout = layout
-        
+
         return panel
 
     def create_left_panel(self) -> QWidget:
@@ -66,13 +85,15 @@ class AdminPanel(Pipe):
         self.create_command_enablers(layout)
         self.create_command_buttons(layout)
         self.create_volume_sliders(layout)
-        
+
         return panel
 
     def update_discord_control_panel(self, event: BotReadyEvent):
         channels = event.client.get_all_channels()
 
-        channels = [channel for channel in channels if isinstance(channel, (TextChannel, VoiceChannel))]
+        channels = [
+            channel for channel in channels if isinstance(channel, (TextChannel, VoiceChannel))
+        ]
 
         for channel in channels:
             if isinstance(channel, VoiceChannel):
@@ -83,17 +104,17 @@ class AdminPanel(Pipe):
                 continue
 
             # Create a label for the channel
-            label = QLabel(chl_type_str+channel.name)
+            label = QLabel(chl_type_str + channel.name)
 
             # Create a button for the channel
-            button = QPushButton('Connect')
+            button = QPushButton("Connect")
             button.clicked.connect(lambda checked=False, ch=channel: self.connect_to_channel(ch))
 
             # Add the label and button to the layout
             self.right_layout.addWidget(label)
             self.right_layout.addWidget(button)
 
-    def connect_to_channel(self, channel: TextChannel|VoiceChannel):
+    def connect_to_channel(self, channel: TextChannel | VoiceChannel):
         asyncio.create_task(self._connectAndPublish(channel))
 
     async def _connectAndPublish(self, channel: TextChannel | VoiceChannel):
@@ -101,7 +122,7 @@ class AdminPanel(Pipe):
             # connect to channel
             client = await channel.connect()
             await EventBusSingleton.publish(VoiceChannelConnectedEvent(client))
-        
+
         if isinstance(channel, TextChannel):
             await EventBusSingleton.publish(TextChannelConnectedEvent(channel))
 
@@ -113,16 +134,16 @@ class AdminPanel(Pipe):
         self.text_display = QLabel(self.text_display_window)
         self.text_display.setWordWrap(True)
         self.text_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.text_display.setFont(QFont('Arial', 16))
+        self.text_display.setFont(QFont("Arial", 16))
 
         self.text_display_window.setCentralWidget(self.text_display)
 
-    def update_text_display(self, text: str|None):
+    def update_text_display(self, text: str | None):
         self.text_display.setText(text)
-        
+
         # Resize the label to fit the text
         self.text_display.adjustSize()
-        
+
         # Resize the window to fit the label
         self.text_display_window.adjustSize()
 
@@ -142,11 +163,17 @@ class AdminPanel(Pipe):
                 slider.setMaximum(100)
                 slider.setValue(self.default_volume)
                 # make sure to update the system with the default values
-                slider.valueChanged.connect(lambda value, audio_type=audio_type, audio_dir=audio_dir: self.volume_updated(value, audio_type, audio_dir))
+                slider.valueChanged.connect(
+                    lambda value, audio_type=audio_type, audio_dir=audio_dir: self.volume_updated(
+                        value, audio_type, audio_dir
+                    )
+                )
                 layout.addWidget(slider)
 
                 mute_checkbox = QCheckBox("Mute")
-                mute_checkbox.stateChanged.connect(lambda state, slider=slider: self.mute_volume(state, slider))
+                mute_checkbox.stateChanged.connect(
+                    lambda state, slider=slider: self.mute_volume(state, slider)
+                )
                 layout.addWidget(mute_checkbox)
 
     def publish_volume_defaults(self, event: StartupEvent):
@@ -168,22 +195,34 @@ class AdminPanel(Pipe):
     def create_command_enablers(self, layout: QVBoxLayout):
         for command_type in CommandType:
             checkbox = QCheckBox(f"{command_type.name} enabled")
-            checkbox.stateChanged.connect(lambda state, command_type=command_type: self.toggle_command_access(state, command_type))
+            checkbox.stateChanged.connect(
+                lambda state, command_type=command_type: self.toggle_command_access(
+                    state, command_type
+                )
+            )
             layout.addWidget(checkbox)
 
     def create_command_buttons(self, layout: QVBoxLayout):
         for command_type in CommandType:
             button = QPushButton(command_type.name)
-            button.clicked.connect(lambda _, command_type=command_type: self.trigger_command(command_type))
+            button.clicked.connect(
+                lambda _, command_type=command_type: self.trigger_command(command_type)
+            )
             layout.addWidget(button)
 
     def volume_updated(self, value, audio_type, audio_dir):
         # Handle volume update here
-        asyncio.create_task(EventBusSingleton.publish(VolumeUpdatedEvent(float(value)/100, audio_type, audio_dir)))
+        asyncio.create_task(
+            EventBusSingleton.publish(VolumeUpdatedEvent(float(value) / 100, audio_type, audio_dir))
+        )
 
     def toggle_command_access(self, state, command_type):
         # Handle command access toggle here
-        asyncio.create_task(EventBusSingleton.publish(CommandAvailabilityEvent(command_type, state == Qt.CheckState.Checked)))
+        asyncio.create_task(
+            EventBusSingleton.publish(
+                CommandAvailabilityEvent(command_type, state == Qt.CheckState.Checked)
+            )
+        )
 
     def trigger_command(self, command_type):
         # Handle command trigger here
@@ -195,25 +234,29 @@ class AdminPanel(Pipe):
     async def run_admin_panel(self):
         self.window.show()
         self.text_display_window.show()
-            
+
     async def onStop(self, event: CommandEvent):
         self.window.close()
         self.text_display_window.close()
 
+
 if __name__ == "__main__":
     import sys
-    from PyQt5.QtWidgets import QApplication
+
     import qasync
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
     loop = qasync.QEventLoop(app)
 
     asyncio.set_event_loop(loop)
-    
+
     panel = AdminPanel(listen_to=MessageEvent)
     panel.window.show()
     panel.text_display_window.show()
 
-    panel.update_text_display("HIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHI")
+    panel.update_text_display(
+        "HIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHI"
+    )
 
     loop.run_forever()

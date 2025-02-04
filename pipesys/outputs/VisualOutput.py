@@ -1,15 +1,16 @@
 import asyncio
 import os
 
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget
-from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QLabel, QMainWindow, QVBoxLayout, QWidget
 
 from event_system import EventBusSingleton
-from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 from event_system.events.Pipeline import MessageEvent
-from pipesys import Pipe, MessageSource
+from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
+from pipesys import MessageSource, Pipe
 from settings import ASYNCOPENAI as client
+
 
 class VisualOutput(Pipe):
     """
@@ -60,18 +61,18 @@ class VisualOutput(Pipe):
 
         task = asyncio.create_task(self.runVisualOutput())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Visual Output"))
-        
+
         return self
 
     async def onMessage(self, event: MessageEvent):
-        if event.message == None or self.stopped:
+        if event.message is None or self.stopped:
             return
 
         self.setText(event.message)
 
         emotion = await self.ChatGPTClassify(event.message)
 
-        if emotion == None:
+        if emotion is None:
             self.setEmote("images/neutral.png")
             return
         self.setEmote("images/" + emotion + ".png")
@@ -84,8 +85,15 @@ class VisualOutput(Pipe):
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the given emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise"},
-                {"role": "user", "content": f"Possible emotions: {','.join(possible_emotions)}\nMessage: {message}"}],
+                {
+                    "role": "system",
+                    "content": "You are an assistant that classifies messages into emotions or expressions. You reply with only one emotion or expression. Use ONLY the given emotions. For example, 'crying' if the message contains sniffling, sobbing, etc. 'questioning' if the message is questioning someone. 'surprised(positive)' if the message contains positive surprise",
+                },
+                {
+                    "role": "user",
+                    "content": f"Possible emotions: {','.join(possible_emotions)}\nMessage: {message}",
+                },
+            ],
             max_tokens=10,
             n=1,
             stop=None,
@@ -96,7 +104,7 @@ class VisualOutput(Pipe):
         emotion = response.choices[0].message.content
 
         return emotion
-    
+
     def setEmote(self, path: str):
         pixmap = QPixmap(path)
         pixmap = pixmap.scaled(500, 500, Qt.AspectRatioMode.KeepAspectRatio)

@@ -1,49 +1,53 @@
-from dataclasses import dataclass
 from asyncio import Task
+from dataclasses import dataclass
 from enum import Enum
 
 from event_system import Event
+
 
 class CommandType(Enum):
     """
     An enum representing the different commands recognized by the system.
     """
+
     STOP = 1
     LISTEN = 2
     SLEEP = 3
     WAKE = 4
 
     @staticmethod
-    def fromString(str: str) -> 'CommandType|None':
+    def fromString(str: str) -> "CommandType|None":
         return command_event_parse_dict.get(str, None)
-    
+
     def toString(self) -> str:
         for key, value in command_event_parse_dict.items():
             if self == value:
                 return key
 
         return ""
- 
+
 
 """
 A dict mapping strings to CommandType enums.
 Meant for parsing commands sent by an LLM.
 Multiple strings map to the same command in case the LLM uses different words to refer to the same command.
-"""   
+"""
 command_event_parse_dict = {
-        "stop": CommandType.STOP,
-        "shutdown": CommandType.STOP,
-        "listen": CommandType.LISTEN,
-        "listening": CommandType.LISTEN,
-        "sleep": CommandType.SLEEP,
-        "wake": CommandType.WAKE
-    }
+    "stop": CommandType.STOP,
+    "shutdown": CommandType.STOP,
+    "listen": CommandType.LISTEN,
+    "listening": CommandType.LISTEN,
+    "sleep": CommandType.SLEEP,
+    "wake": CommandType.WAKE,
+}
+
 
 @dataclass
 class CommandEvent(Event):
     """
     A dataclass representing a system-wide command to be executed.
     """
+
     command: CommandType
 
 
@@ -51,16 +55,20 @@ class StartupStage(Enum):
     """
     An enum representing the different stages of the startup process.
     """
+
     BOOT = 1
     WARMUP = 2
     READY = 3
+
 
 @dataclass
 class StartupEvent(Event):
     """
     A dataclass representing an event to be raised when the system is starting up.
     """
+
     stage: StartupStage
+
 
 @dataclass
 class TaskCreatedEvent(Event):
@@ -71,13 +79,16 @@ class TaskCreatedEvent(Event):
     task (Task): the task that was created
     pretty_sender (str): a pretty string representation of the sender of the task
     """
+
     task: Task
     pretty_sender: str
+
 
 @dataclass
 class CommandAvailabilityEvent(Event):
     """
     A dataclass representing an event to be raised when the system's commands change availability.
     """
+
     command_type: CommandType
     command_available: bool

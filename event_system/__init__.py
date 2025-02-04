@@ -1,5 +1,4 @@
-from .Event import Event
-from .EventBus import EventBus
-from .EventBusSingleton import EventBusSingleton
-
-from . import events
+from . import events as events
+from .Event import Event as Event
+from .EventBus import EventBus as EventBus
+from .EventBusSingleton import EventBusSingleton as EventBusSingleton

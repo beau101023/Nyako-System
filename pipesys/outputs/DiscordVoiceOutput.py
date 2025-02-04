@@ -1,21 +1,22 @@
-import discord
 import asyncio
-
-from pydub import AudioSegment
-
 from io import BytesIO
 
-from TTS import TextToSpeech, SileroTTS
+import discord
+from pydub import AudioSegment
 
 from event_system.EventBusSingleton import EventBusSingleton
-
+from event_system.events.Audio import AudioDirection, AudioType, SpeakingStateUpdate
 from event_system.events.Discord import VoiceChannelConnectedEvent, VoiceChannelDisconnectedEvent
-from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
-from event_system.events.Audio import AudioDirection, SpeakingStateUpdate, AudioType
-from event_system.events.Pipeline import OutputDeliveryEvent
-
+from event_system.events.Pipeline import (
+    MessageEvent,
+    OutputAvailabilityEvent,
+    OutputDeliveryEvent,
+    SystemOutputType,
+)
 from event_system.events.System import StartupEvent, StartupStage, TaskCreatedEvent
-from pipesys.Pipe import Pipe, MessageSource
+from pipesys.Pipe import MessageSource, Pipe
+from TTS import SileroTTS, TextToSpeech
+
 
 class DiscordVoiceOutput(Pipe):
     """
@@ -31,7 +32,7 @@ class DiscordVoiceOutput(Pipe):
         self.asyncio_main_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
     @classmethod
-    async def create(cls, listen_to: MessageSource, text_to_speech: TextToSpeech=SileroTTS()):
+    async def create(cls, listen_to: MessageSource, text_to_speech: TextToSpeech = SileroTTS()):
         self = DiscordVoiceOutput()
 
         self.text_to_speech = text_to_speech
@@ -41,24 +42,31 @@ class DiscordVoiceOutput(Pipe):
         EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
         self.subscribe_to_message_sources(listen_to, self.handleMessage)
 
-        EventBusSingleton.subscribe(SpeakingStateUpdate(audio_direction=AudioDirection.INPUT), self.onUserSpeakingStateChange)
+        EventBusSingleton.subscribe(
+            SpeakingStateUpdate(audio_direction=AudioDirection.INPUT),
+            self.onUserSpeakingStateChange,
+        )
         task = asyncio.create_task(self.playback_loop())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Voice Output Playback"))
 
         return self
-    
+
     def onWarmup(self, event: StartupEvent):
         self.text_to_speech.warmup()
-    
+
     async def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
         self.voice_connection = event.voice_client
 
-        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, True))
+        await EventBusSingleton.publish(
+            OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, True)
+        )
 
     async def onVoiceChannelDisconnected(self, event: VoiceChannelDisconnectedEvent):
         self.voice_connection = None
 
-        await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, False))
+        await EventBusSingleton.publish(
+            OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, False)
+        )
 
     async def onUserSpeakingStateChange(self, event: SpeakingStateUpdate):
         # when user starts speaking, call the interrupt method
@@ -101,7 +109,7 @@ class DiscordVoiceOutput(Pipe):
             self.voice_connection.play(
                 discord.PCMAudio(buffer),
                 after=lambda e: self.finishedPlayingCallback(e, message),
-                wait_finish=False
+                wait_finish=False,
             )
 
     def convert_for_output(self, audio_segment: AudioSegment) -> AudioSegment:
@@ -109,11 +117,13 @@ class DiscordVoiceOutput(Pipe):
 
     def finishedPlayingCallback(self, ex: Exception | None, message: str):
         asyncio.run_coroutine_threadsafe(
-            EventBusSingleton.publish(SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.OUTPUT)),
-            self.asyncio_main_loop
+            EventBusSingleton.publish(
+                SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.OUTPUT)
+            ),
+            self.asyncio_main_loop,
         )
         if ex is None:
             asyncio.run_coroutine_threadsafe(
                 EventBusSingleton.publish(OutputDeliveryEvent(message=message)),
-                self.asyncio_main_loop
+                self.asyncio_main_loop,
             )

@@ -1,6 +1,8 @@
 import asyncio
-from event_system.events.System import TaskCreatedEvent
+
 from event_system import EventBusSingleton
+from event_system.events.System import TaskCreatedEvent
+
 
 class TaskManager:
     def __init__(self):

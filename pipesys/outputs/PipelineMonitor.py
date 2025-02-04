@@ -1,10 +1,9 @@
 from event_system.EventBusSingleton import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputAvailabilityEvent, SystemOutputType
-from pipesys import Pipe, MessageSource
+from pipesys import MessageSource, Pipe
 
 
 class PipelineMonitor(Pipe):
-
     def __init__(self, listen_to: MessageSource):
         super().__init__()
 
@@ -12,7 +11,6 @@ class PipelineMonitor(Pipe):
 
     @classmethod
     async def create(cls, listen_to: MessageSource):
-
         self = PipelineMonitor(listen_to)
         await EventBusSingleton.publish(OutputAvailabilityEvent(SystemOutputType.CONSOLE, True))
 
@@ -21,7 +19,7 @@ class PipelineMonitor(Pipe):
     async def onMessage(self, event: MessageEvent):
         """
         Outputs a message to the console asynchonously.
-        
+
         Parameters:
         message (str): the message to output
         """
@@ -30,5 +28,5 @@ class PipelineMonitor(Pipe):
 
         try:
             print(f"{sender_name}: {str(event)}")
-        except:
+        except Exception:
             print("[Unprintable message event.]")
