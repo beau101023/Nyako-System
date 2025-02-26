@@ -79,9 +79,6 @@ async def main():
     print("warming up...")
     await EventBusSingleton.publish(StartupEvent(StartupStage.WARMUP))
 
-    print("linking...")
-    # extra linking
-
     print("running!")
     # run tasks
     await task_manager.run()
