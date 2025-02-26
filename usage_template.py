@@ -16,10 +16,10 @@ from TTS import MeloTTS
 
 
 async def main():
-    # region Core Modules
-
     ## MANDATORY Runs all async tasks, must be created before task-producing modules
     task_manager = TaskManager()
+    
+    # region Core Modules
 
     ## Handles the discord client
     await DiscordClientRunner.create()
