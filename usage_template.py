@@ -76,6 +76,7 @@ async def main():
 
     # endregion
 
+    # Some modules wait for this event to be triggered before preloading models, doing JIT compilation, etc.
     print("warming up...")
     await EventBusSingleton.publish(StartupEvent(StartupStage.WARMUP))
 
