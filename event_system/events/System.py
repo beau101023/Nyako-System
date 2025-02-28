@@ -2,7 +2,7 @@ from asyncio import Task
 from dataclasses import dataclass
 from enum import Enum
 
-from event_system import Event
+from event_system import Event, EventParameterFlag
 
 
 class CommandType(Enum):
@@ -48,7 +48,7 @@ class CommandEvent(Event):
     A dataclass representing a system-wide command to be executed.
     """
 
-    command: CommandType
+    command: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 class StartupStage(Enum):
@@ -67,7 +67,7 @@ class StartupEvent(Event):
     A dataclass representing an event to be raised when the system is starting up.
     """
 
-    stage: StartupStage
+    stage: StartupStage | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -80,8 +80,8 @@ class TaskCreatedEvent(Event):
     pretty_sender (str): a pretty string representation of the sender of the task
     """
 
-    task: Task
-    pretty_sender: str
+    task: Task | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    pretty_sender: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -90,5 +90,5 @@ class CommandAvailabilityEvent(Event):
     A dataclass representing an event to be raised when the system's commands change availability.
     """
 
-    command_type: CommandType
-    command_available: bool
+    command_type: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    command_available: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
