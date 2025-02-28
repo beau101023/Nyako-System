@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from event_system import Event
+from event_system import Event, EventParameterFlag
 
 from .Pipeline import SystemOutputType
 from .System import CommandType
@@ -25,7 +25,7 @@ class InvalidTagEvent(Event):
     tag (string): the malformed tag text, or none if no tag was provided
     """
 
-    tag: str
+    tag: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -38,8 +38,8 @@ class InactiveOutputEvent(Event):
     output_target (SystemOutputType): the target output that was unavailable
     """
 
-    message: str
-    tag: SystemOutputType
+    message: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    tag: SystemOutputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -52,4 +52,4 @@ class InactiveCommandEvent(Event):
     command (CommandType): the command that was unavailable
     """
 
-    command: CommandType
+    command: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
