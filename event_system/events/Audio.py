@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from event_system import Event
+from event_system import Event, EventParameterFlag
 
 
 class AudioType(Enum):
@@ -16,13 +16,13 @@ class AudioDirection(Enum):
 
 @dataclass
 class VolumeUpdatedEvent(Event):
-    volume: float | None = None
-    audio_type: AudioType | None = None
-    audio_direction: AudioDirection | None = None
+    volume: float | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    audio_type: AudioType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    audio_direction: AudioDirection | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
 class SpeakingStateUpdate(Event):
-    is_speaking: bool | None = None
-    audio_type: AudioType | None = None
-    audio_direction: AudioDirection | None = None
+    is_speaking: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    audio_type: AudioType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    audio_direction: AudioDirection | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED

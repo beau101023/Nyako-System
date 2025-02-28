@@ -13,7 +13,7 @@ from discord import (
     VoiceClient,
 )
 
-from event_system import Event
+from event_system import Event, EventParameterFlag
 
 PartialMessageableChannel = Union[
     TextChannel, VoiceChannel, StageChannel, Thread, DMChannel, PartialMessageable
@@ -23,7 +23,7 @@ MessageableChannel = Union[PartialMessageableChannel, GroupChannel]
 
 @dataclass
 class VoiceChannelConnectedEvent(Event):
-    voice_client: VoiceClient
+    voice_client: VoiceClient | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -33,9 +33,9 @@ class VoiceChannelDisconnectedEvent(Event):
 
 @dataclass
 class TextChannelConnectedEvent(Event):
-    channel: MessageableChannel
+    channel: MessageableChannel | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
 class BotReadyEvent(Event):
-    client: Client
+    client: Client | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED

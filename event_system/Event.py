@@ -1,4 +1,5 @@
 from abc import ABC
+from enum import Enum
 
 
 class Event(ABC):
@@ -7,3 +8,7 @@ class Event(ABC):
     """
 
     pass
+
+
+class EventParameterFlag(Enum):
+    NOT_SPECIFIED = "NOT_SPECIFIED"

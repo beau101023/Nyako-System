@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import Coroutine
 from typing import Any, Callable, TypeVar, Union
 
-from event_system import Event
+from event_system import Event, EventParameterFlag
 
 AnyEvent = TypeVar("AnyEvent", bound=Event)
 """
@@ -103,7 +103,7 @@ class EventBus:
         Creates a filter function for the given event instance.
 
         The returned function checks:
-          - If a field value in `event_filter` is None, it does not filter on that field.
+          - If a field value in `event_filter` is EventParameterFlag.NOT_SPECIFIED, it does not filter on that field.
           - If a field value is a type, the corresponding event's field must be an instance of that type.
           - Otherwise, the event's field must match the `event_filter` value exactly.
 
@@ -117,8 +117,8 @@ class EventBus:
 
         def filter_func(event: Event) -> bool:
             for field_name, filter_value in vars(event_filter).items():
-                # Skip fields explicitly set to None, meaning "ignore this field"
-                if filter_value is None:
+                # Skip fields explicitly set to EventParameterFlag.NOT_SPECIFIED, meaning "ignore this field"
+                if filter_value == EventParameterFlag.NOT_SPECIFIED:
                     continue
 
                 event_value = getattr(event, field_name, None)
