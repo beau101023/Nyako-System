@@ -1,6 +1,6 @@
 # Nyako-System 🐱
 
-Nyako-System is a Python framework for creating AI chat systems. It provides a modular architecture of pipeline components and an object-oriented event bus, allowing developers to connect components to build a customized AI system.
+Nyako-System is a Python framework for creating AI chatbots. It provides a modular library of pipeline components for connecting inputs and outputs to an LLM. It also provides several components for intermediate processing stages.
 
 ## Capabilities
 
@@ -12,7 +12,7 @@ Nyako-System supports
 - 👂💬 Discord voice and text chat via extensions to [Pycord](https://github.com/Pycord-Development/pycord)
 
 
-- 👂 [Real-time input segmentation](/pipesys/processors/RealtimeMessageChunker.py) for natural multi-user conversations
+- 💬💬 [Real-time input segmentation](/pipesys/processors/RealtimeMessageChunker.py) for natural multi-user conversations
 - 💻 Text chat via the console
 
 ## Demos
@@ -21,7 +21,7 @@ Nyako-System supports
 
 ## Example Usage
 
-See **[the usage template](usage_template.py)** for an example configuration of a full voice-based AI assistant that communicates via Discord.
+See **[the usage template](usage_template.py)** for an example configuration of a chatbot that speaks over Discord.
 
 ## Further Reading
 
