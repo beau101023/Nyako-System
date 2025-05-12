@@ -15,9 +15,10 @@ Nyako-System supports
 - 💬💬 [Real-time input segmentation](/pipesys/processors/RealtimeMessageChunker.py) for natural multi-user conversations
 - 💻 Text chat via the console
 
+<!--
 ## Demos
 
-(Coming soon!)
+(Coming soon!)-->
 
 ## Example Usage
 
