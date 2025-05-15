@@ -37,49 +37,49 @@ class DiscordVoiceOutput(Pipe):
 
         self.text_to_speech = text_to_speech
 
-        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
-        EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.onVoiceChannelConnected)
-        EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.onVoiceChannelDisconnected)
-        self.subscribe_to_message_sources(listen_to, self.handleMessage)
+        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.on_warmup)
+        EventBusSingleton.subscribe(VoiceChannelConnectedEvent, self.on_voice_channel_connected)
+        EventBusSingleton.subscribe(VoiceChannelDisconnectedEvent, self.on_voice_channel_disconnected)
+        self.subscribe_to_message_sources(listen_to, self.handle_message)
 
         EventBusSingleton.subscribe(
             SpeakingStateUpdate(audio_direction=AudioDirection.INPUT),
-            self.onUserSpeakingStateChange,
+            self.on_user_speaking_state_change,
         )
         task = asyncio.create_task(self.playback_loop())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Voice Output Playback"))
 
         return self
 
-    def onWarmup(self, event: StartupEvent):
+    def on_warmup(self, event: StartupEvent):
         self.text_to_speech.warmup()
 
-    async def onVoiceChannelConnected(self, event: VoiceChannelConnectedEvent):
+    async def on_voice_channel_connected(self, event: VoiceChannelConnectedEvent):
         self.voice_connection = event.voice_client
 
         await EventBusSingleton.publish(
             OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, True)
         )
 
-    async def onVoiceChannelDisconnected(self, event: VoiceChannelDisconnectedEvent):
+    async def on_voice_channel_disconnected(self, event: VoiceChannelDisconnectedEvent):
         self.voice_connection = None
 
         await EventBusSingleton.publish(
             OutputAvailabilityEvent(SystemOutputType.DISCORD_VOICE, False)
         )
 
-    async def onUserSpeakingStateChange(self, event: SpeakingStateUpdate):
+    async def on_user_speaking_state_change(self, event: SpeakingStateUpdate):
         # when user starts speaking, call the interrupt method
         if event.is_speaking:
-            await self.interruptSpeech()
+            await self.interrupt_speech()
 
-    async def interruptSpeech(self):
+    async def interrupt_speech(self):
         if self.voice_connection and self.voice_connection.is_playing():
             self.voice_connection.stop()
         while not self.audio_queue.empty():
             self.audio_queue.get_nowait()
 
-    async def handleMessage(self, event: MessageEvent):
+    async def handle_message(self, event: MessageEvent):
         if not self.voice_connection or not event.message:
             return
 
@@ -108,14 +108,14 @@ class DiscordVoiceOutput(Pipe):
             buffer = BytesIO(audio_data)
             self.voice_connection.play(
                 discord.PCMAudio(buffer),
-                after=lambda e: self.finishedPlayingCallback(e, message),
+                after=lambda e: self.finished_playing_callback(e, message),
                 wait_finish=False,
             )
 
     def convert_for_output(self, audio_segment: AudioSegment) -> AudioSegment:
         return audio_segment.set_channels(2).set_frame_rate(48000).set_sample_width(2)
 
-    def finishedPlayingCallback(self, ex: Exception | None, message: str):
+    def finished_playing_callback(self, ex: Exception | None, message: str):
         asyncio.run_coroutine_threadsafe(
             EventBusSingleton.publish(
                 SpeakingStateUpdate(False, AudioType.DISCORD, AudioDirection.OUTPUT)

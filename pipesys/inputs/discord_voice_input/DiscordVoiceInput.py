@@ -196,7 +196,7 @@ class DiscordVoiceInput(Pipe):
         for segment in speech_buffer:
             combined_audio += segment
 
-        transcription = self.transcriber.transcribeSpeech(combined_audio, self.input_gain)
+        transcription = self.transcriber.transcribe_speech(combined_audio, self.input_gain)
         if not transcription:
             return
 

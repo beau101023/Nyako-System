@@ -1,7 +1,7 @@
 import asyncio
 import threading
 
-from audio_playback import Audio_Player, PyAudioPlayer
+from audio_playback import AudioPlayer, PyAudioPlayer
 from event_system import EventBusSingleton
 from event_system.events.Audio import (
     AudioDirection,
@@ -22,7 +22,7 @@ from TTS import MeloTTS, TextToSpeech
 
 class TextToSpeechOutput(Pipe):
     text_to_speech: TextToSpeech
-    audio_player: Audio_Player
+    audio_player: AudioPlayer
 
     def __init__(self):
         self.volume: float = 1.0
@@ -31,20 +31,20 @@ class TextToSpeechOutput(Pipe):
     async def create(
         cls,
         listen_to: MessageSource,
-        speech_to_text: TextToSpeech = MeloTTS(),
-        audio_player: Audio_Player = PyAudioPlayer(),
+        text_to_speech: TextToSpeech = MeloTTS(),
+        audio_player: AudioPlayer = PyAudioPlayer(),
     ):
         self = TextToSpeechOutput()
 
-        self.text_to_speech = speech_to_text
+        self.text_to_speech = text_to_speech
         self.audio_player = audio_player
 
         # subscribe to events
-        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.onWarmup)
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.on_warmup)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
         EventBusSingleton.subscribe(
             VolumeUpdatedEvent(audio_type=AudioType.SYSTEM, audio_direction=AudioDirection.OUTPUT),
-            self.onVolumeUpdate,
+            self.on_volume_update,
         )
 
         # notify system that tts is ready
@@ -52,7 +52,7 @@ class TextToSpeechOutput(Pipe):
 
         return self
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         msg = event.message
 
         # tts breaks if you send it nothing
@@ -63,8 +63,8 @@ class TextToSpeechOutput(Pipe):
         thread = threading.Thread(target=self.say, args=(msg, asyncio.get_event_loop()))
         thread.start()
 
-    async def onVolumeUpdate(self, event: VolumeUpdatedEvent):
-        if event.volume is None:
+    async def on_volume_update(self, event: VolumeUpdatedEvent):
+        if not isinstance(event.volume, float):
             return
 
         self.audio_player.set_volume(event.volume)
@@ -80,15 +80,15 @@ class TextToSpeechOutput(Pipe):
             EventBusSingleton.publish(OutputDeliveryEvent(message=text, sender=self)), loop
         )
 
-    def onWarmup(self, event: StartupEvent):
+    def on_warmup(self, event: StartupEvent):
         self.text_to_speech.warmup()
 
-    async def publishSpeakingStart(self):
+    async def publish_speaking_start(self):
         await EventBusSingleton.publish(
             SpeakingStateUpdate(True, AudioType.SYSTEM, AudioDirection.OUTPUT)
         )
 
-    async def publishSpeakingEnd(self):
+    async def publish_speaking_end(self):
         await EventBusSingleton.publish(
             SpeakingStateUpdate(False, AudioType.SYSTEM, AudioDirection.OUTPUT)
         )

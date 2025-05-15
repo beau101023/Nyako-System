@@ -13,7 +13,7 @@ class Transcriber(ABC):
         pass
 
     @abstractmethod
-    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0) -> str:
+    def transcribe_speech(self, speech_buffer: AudioSegment, input_gain=1.0) -> str:
         """
         Transcribes a section of audio data using the provided transcriber object, with the specified input gain.
 
@@ -56,8 +56,8 @@ class WhisperTranscriber(Transcriber):
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
-    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0):
-        audio_segment = speechBuffer
+    def transcribe_speech(self, speech_buffer: AudioSegment, input_gain=1.0):
+        audio_segment = speech_buffer
         audio_segment = audio_segment.set_frame_rate(
             INPUT_SAMPLING_RATE
         )  # Set sampling rate to 16kHz
@@ -123,8 +123,8 @@ class FasterWhisperTranscriber(Transcriber):
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
-    def transcribeSpeech(self, speechBuffer: AudioSegment, input_gain=1.0):
-        audio_segment = speechBuffer
+    def transcribe_speech(self, speech_buffer: AudioSegment, input_gain=1.0):
+        audio_segment = speech_buffer
         audio_segment = audio_segment.set_frame_rate(
             INPUT_SAMPLING_RATE
         )  # Set sampling rate to 16kHz

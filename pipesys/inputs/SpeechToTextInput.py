@@ -55,14 +55,14 @@ class SpeechToTextInput(Pipe):
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
         EventBusSingleton.subscribe(
             VolumeUpdatedEvent(audio_type=AudioType.SYSTEM, audio_direction=AudioDirection.INPUT),
-            self.onInputVolumeUpdate,
+            self.on_input_volume_update,
         )
 
         task = asyncio.create_task(self.run())
         await EventBusSingleton.publish(TaskCreatedEvent(task, pretty_sender="Speech to Text"))
         return self
 
-    def stop(self, Event: CommandEvent):
+    def stop(self, event: CommandEvent):
         self.stream.stop_stream()
         self.stream.close()
         self.stopped = True
@@ -75,12 +75,12 @@ class SpeechToTextInput(Pipe):
             input=True,
             format=pyaudio.paFloat32,
             frames_per_buffer=FramesPerBuffer,
-            stream_callback=self.microphoneInputCallback,
+            stream_callback=self.microphone_input_callback,
         )
         while not self.stopped:
             await asyncio.sleep(0.1)
 
-    async def onInputVolumeUpdate(self, event: VolumeUpdatedEvent):
+    async def on_input_volume_update(self, event: VolumeUpdatedEvent):
         if event.volume is None:
             return
 
@@ -92,11 +92,11 @@ class SpeechToTextInput(Pipe):
     async def unmute(self):
         self.stream.start_stream()
 
-    def microphoneInputCallback(self, in_data, frame_count, time_info, status):
-        isSpeakingProbability = detectVoiceActivity(in_data)
+    def microphone_input_callback(self, in_data, frame_count, time_info, status):
+        is_speaking_probability = detectVoiceActivity(in_data)
 
         if (
-            isSpeakingProbability > speech_sensitivity_threshold
+            is_speaking_probability > speech_sensitivity_threshold
             and not self.speechRecordingTriggered
         ):
             self.speechRecordingTriggered = True
@@ -112,7 +112,7 @@ class SpeechToTextInput(Pipe):
         if self.speechRecordingTriggered:
             self.speechBuffer += in_data
 
-        if isSpeakingProbability < 0.5:
+        if is_speaking_probability < 0.5:
             self.noSpeechTime += 0.032
             if self.noSpeechTime > 1 and self.speechRecordingTriggered:
                 # stop recording and reset no speech time
@@ -120,7 +120,7 @@ class SpeechToTextInput(Pipe):
                 self.noSpeechTime = 0
 
                 # decode speech
-                transcript = self.transcriber.transcribeSpeech(
+                transcript = self.transcriber.transcribe_speech(
                     self.speechBuffer, input_gain=self.input_gain
                 )
 

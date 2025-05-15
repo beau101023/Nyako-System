@@ -7,7 +7,7 @@ class PipelineMonitor(Pipe):
     def __init__(self, listen_to: MessageSource):
         super().__init__()
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     @classmethod
     async def create(cls, listen_to: MessageSource):
@@ -16,7 +16,7 @@ class PipelineMonitor(Pipe):
 
         return self
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         """
         Outputs a message to the console asynchonously.
 
