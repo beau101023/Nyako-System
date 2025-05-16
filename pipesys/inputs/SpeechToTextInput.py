@@ -1,8 +1,10 @@
 import asyncio
+import threading
 from asyncio import AbstractEventLoop
 
 import pyaudio
 
+from audio_playback import PyAudioPlayer
 from event_system import EventBusSingleton
 from event_system.events.Audio import (
     AudioDirection,
@@ -119,6 +121,11 @@ class SpeechToTextInput(Pipe):
                 self.speechRecordingTriggered = False
                 self.noSpeechTime = 0
 
+                if(debug_mode):
+                    # spin off thread here for debug audio playback
+                    t = threading.Thread(target = play_debug_audio, args=(speech_buffer_audiosegment,))
+                    t.start()
+
                 # decode speech
                 transcript = self.transcriber.transcribe_speech(
                     self.speechBuffer, input_gain=self.input_gain
@@ -161,3 +168,11 @@ class SpeechToTextInput(Pipe):
             self.noSpeechTime = 0
 
         return (in_data, pyaudio.paContinue)
+
+
+_debug_player = PyAudioPlayer()
+def play_debug_audio(audio_segment):
+    """
+    Play the audio segment using PyAudio
+    """
+    _debug_player.play_audio(audio_segment)  # Play the audio segment
