@@ -3,6 +3,7 @@ import threading
 from asyncio import AbstractEventLoop
 
 import pyaudio
+from pydub import AudioSegment
 
 from audio_playback import PyAudioPlayer
 from event_system import EventBusSingleton
@@ -75,7 +76,7 @@ class SpeechToTextInput(Pipe):
             rate=INPUT_SAMPLING_RATE,
             channels=1,
             input=True,
-            format=pyaudio.paFloat32,
+            format=pyaudio.paInt16,
             frames_per_buffer=FramesPerBuffer,
             stream_callback=self.microphone_input_callback,
         )
@@ -121,6 +122,13 @@ class SpeechToTextInput(Pipe):
                 self.speechRecordingTriggered = False
                 self.noSpeechTime = 0
 
+                speech_buffer_audiosegment = AudioSegment(
+                    data=self.speechBuffer,
+                    sample_width=2,
+                    frame_rate=INPUT_SAMPLING_RATE,
+                    channels=1,
+                )
+                
                 if(debug_mode):
                     # spin off thread here for debug audio playback
                     t = threading.Thread(target = play_debug_audio, args=(speech_buffer_audiosegment,))
@@ -128,7 +136,7 @@ class SpeechToTextInput(Pipe):
 
                 # decode speech
                 transcript = self.transcriber.transcribe_speech(
-                    self.speechBuffer, input_gain=self.input_gain
+                    speech_buffer_audiosegment, input_gain=self.input_gain
                 )
 
                 if self.transcriber.supports_extra_tagging():
