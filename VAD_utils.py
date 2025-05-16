@@ -14,7 +14,7 @@ def detectVoiceActivity(buf) -> float:
 
     elif isinstance(buf, (bytes, bytearray)):
         return VAD(
-            torch.from_numpy(np.frombuffer(buf, dtype=np.float32)), INPUT_SAMPLING_RATE
+            torch.from_numpy(np.frombuffer(buf, dtype=np.int16).astype(np.float32)), INPUT_SAMPLING_RATE
         ).item()
 
     elif isinstance(buf, pydub.AudioSegment):
