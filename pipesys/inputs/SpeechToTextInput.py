@@ -84,7 +84,7 @@ class SpeechToTextInput(Pipe):
             await asyncio.sleep(0.1)
 
     async def on_input_volume_update(self, event: VolumeUpdatedEvent):
-        if event.volume is None:
+        if not isinstance(event.volume, float):
             return
 
         self.input_gain = event.volume
