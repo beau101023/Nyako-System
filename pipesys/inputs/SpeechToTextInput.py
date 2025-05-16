@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import threading
 from asyncio import AbstractEventLoop
 
@@ -26,7 +27,7 @@ class SpeechToTextInput(Pipe):
     transcriber: Transcriber
     audio: pyaudio.PyAudio
 
-    def __init__(self):
+    def __init__(self, pre_buffer_seconds: float):
         self.audio = pyaudio.PyAudio()
         self.noSpeechTime = 0
         self.speechRecordingTriggered = False
@@ -34,9 +35,13 @@ class SpeechToTextInput(Pipe):
         self.input_gain: float = 1.0
         self.stopped = False
         self.asyncio_main_loop = asyncio.get_event_loop()
+        
+        # rolling buffer of recent audio because the VAD cuts off the beginning of the audio
+        pre_buffer_frames = int((INPUT_SAMPLING_RATE / FramesPerBuffer) * pre_buffer_seconds)
+        self.pre_speech_buffer = collections.deque(maxlen=pre_buffer_frames)
 
     @classmethod
-    async def create(cls, transcriber: Transcriber | None):
+    async def create(cls, transcriber: Transcriber | None, pre_buffer_seconds: float = 0.2):
         """
         Creates an instance of the SpeechToTextInput module.
 
@@ -48,7 +53,7 @@ class SpeechToTextInput(Pipe):
         Returns:
         SpeechToTextInput: the created instance
         """
-        self = SpeechToTextInput()
+        self = SpeechToTextInput(pre_buffer_seconds)
 
         if transcriber:
             self.transcriber = transcriber
@@ -96,6 +101,8 @@ class SpeechToTextInput(Pipe):
         self.stream.start_stream()
 
     def microphone_input_callback(self, in_data, frame_count, time_info, status):
+        self.pre_speech_buffer.append(in_data)
+
         is_speaking_probability = detectVoiceActivity(in_data)
 
         if (
@@ -103,6 +110,9 @@ class SpeechToTextInput(Pipe):
             and not self.speechRecordingTriggered
         ):
             self.speechRecordingTriggered = True
+
+            # add pre-speech buffer here
+            self.speechBuffer = b"".join(self.pre_speech_buffer)
 
             # raise user speaking state update event
             asyncio.run_coroutine_threadsafe(
