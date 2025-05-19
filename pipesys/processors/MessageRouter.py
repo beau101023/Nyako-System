@@ -32,9 +32,8 @@ class MessageRouter(Pipe):
         """
 
         message = event.message
-
-        # discard if message is none, empty, or only whitespace
-        if message is None or message.strip() == "":
+        # discard if message is not a string or only whitespace
+        if not isinstance(message, str) or message.strip() == "":
             return
 
         # Split the message by tag.
@@ -155,12 +154,18 @@ class MessageRouter(Pipe):
         return re.split(r"(\[.*?\])", message)
 
     async def on_output_state_changed(self, event: OutputAvailabilityEvent):
+        if not isinstance(event.output_type, SystemOutputType):
+            return
+
         if event.output_available:
             self.active_outputs.add(event.output_type)
         else:
             self.active_outputs.remove(event.output_type)
 
     async def on_command_state_changed(self, event: CommandAvailabilityEvent):
+        if not isinstance(event.command_type, CommandType):
+            return
+
         if event.command_available:
             self.active_commands.add(event.command_type)
         else:

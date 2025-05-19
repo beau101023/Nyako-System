@@ -28,11 +28,14 @@ class DiscordOutput(Pipe):
         return self
 
     def set_channel(self, event: TextChannelConnectedEvent):
+        if(not isinstance(event.channel, discord.abc.MessageableChannel)):
+            return
+        
         self.sendChannel = event.channel
 
     async def on_message(self, event: MessageEvent):
         # discord will throw an error if the message is empty
-        if event.message is None or not event.message.strip():
+        if not isinstance(event.message, str) or not event.message.strip():
             return
 
         if self.sendChannel is not None:

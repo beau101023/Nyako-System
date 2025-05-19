@@ -18,7 +18,7 @@ class MessageEvent(Event):
     sender: Union['Pipe', type["Pipe"], EventParameterFlag] = EventParameterFlag.NOT_SPECIFIED
 
     def __str__(self) -> str:
-        if self.message is None:
+        if not isinstance(self.message, str):
             return ""
         return self.message
 

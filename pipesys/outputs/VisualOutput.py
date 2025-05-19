@@ -65,7 +65,7 @@ class VisualOutput(Pipe):
         return self
 
     async def on_message(self, event: MessageEvent):
-        if event.message is None or self.stopped:
+        if not isinstance(event.message, str) or self.stopped:
             return
 
         self.set_text(event.message)

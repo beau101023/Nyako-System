@@ -1,6 +1,6 @@
 import asyncio
 
-from discord import TextChannel, VoiceChannel
+from discord import Client, TextChannel, VoiceChannel
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
@@ -89,6 +89,9 @@ class AdminPanel(Pipe):
         return panel
 
     def update_discord_control_panel(self, event: BotReadyEvent):
+        if(not isinstance(event.client, Client)):
+            return
+        
         channels = event.client.get_all_channels()
 
         channels = [
@@ -229,6 +232,9 @@ class AdminPanel(Pipe):
         asyncio.create_task(EventBusSingleton.publish(CommandEvent(command_type)))
 
     def on_message(self, event: MessageEvent):
+        if(not isinstance(event.message, str)):
+            return
+        
         self.update_text_display(event.message)
 
     async def run_admin_panel(self):

@@ -222,7 +222,7 @@ class DiscordVoiceInput(Pipe):
         """
         Event handler: Adjusts the voice input gain in response to a volume update event.
         """
-        if event.volume:
+        if isinstance(event.volume, float):
             self.input_gain = event.volume
         else:
             self.input_gain = 1.0
@@ -237,12 +237,18 @@ class DiscordVoiceInput(Pipe):
         """
         Event handler: Sets the Discord client when the bot is ready.
         """
+        if not isinstance(event.client, discord.Client):
+            return
+        
         self.client = event.client
-
+        
     async def on_voice_channel_connected(self, event: VoiceChannelConnectedEvent):
         """
         Event handler: Starts recording when the bot successfully joins a voice channel.
         """
+        if(not isinstance(event.voice_client, discord.VoiceClient)):
+            return
+        
         self.voice_connection = event.voice_client
 
         # Play a startup sound

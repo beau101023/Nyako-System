@@ -62,6 +62,10 @@ class FileLogger(Pipe):
         else:
             sender_name = "assistant"
 
+        message = str(event)
+        if not message:
+            return
+            
         async with aiofiles.open(self.logfile_path, mode="a", encoding="utf-8") as logfile:
             # Add a newline between every message.
-            await logfile.write(f"\n{sender_name}: {str(event)}")
+            await logfile.write(f"\n{sender_name}: {message}")

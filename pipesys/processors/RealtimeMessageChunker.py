@@ -109,7 +109,7 @@ class RealtimeMessageChunker(Pipe):
         await EventBusSingleton.publish(MessageEvent(message, self))
 
     async def on_message(self, event: UserInputEvent):
-        if event.priority is None:
+        if not isinstance(event.priority, int):
             return
 
         # don't add if `event` has a lower priority than other queued events
@@ -154,7 +154,7 @@ class RealtimeMessageChunker(Pipe):
 
     async def on_user_speaking_state_update(self, event: SpeakingStateUpdate):
         # if the user has finished a period of speech, update the last input time
-        if event.is_speaking is None:
+        if not isinstance(event.is_speaking, bool):
             return
 
         if not event.is_speaking:

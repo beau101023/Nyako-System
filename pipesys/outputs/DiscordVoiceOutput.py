@@ -55,6 +55,9 @@ class DiscordVoiceOutput(Pipe):
         self.text_to_speech.warmup()
 
     async def on_voice_channel_connected(self, event: VoiceChannelConnectedEvent):
+        if(not isinstance(event.voice_client, discord.VoiceClient)):
+            return
+        
         self.voice_connection = event.voice_client
 
         await EventBusSingleton.publish(
@@ -70,7 +73,7 @@ class DiscordVoiceOutput(Pipe):
 
     async def on_user_speaking_state_change(self, event: SpeakingStateUpdate):
         # when user starts speaking, call the interrupt method
-        if event.is_speaking:
+        if isinstance(event.is_speaking, bool) and event.is_speaking:
             await self.interrupt_speech()
 
     async def interrupt_speech(self):
@@ -80,7 +83,7 @@ class DiscordVoiceOutput(Pipe):
             self.audio_queue.get_nowait()
 
     async def handle_message(self, event: MessageEvent):
-        if not self.voice_connection or not event.message:
+        if not self.voice_connection or not isinstance(event.message, str):
             return
 
         # Generate audio in parallel

@@ -61,17 +61,17 @@ class ConversationSessionProcessor(Pipe):
         self.conversation_session.update_system_prompt(self.get_system_prompt())
 
     async def on_output_delivered(self, event: MessageEvent):
-        if event.message:
+        if isinstance(event.message,str):
             await self.conversation_session.add_llm_message_to_context(event.message)
 
     async def on_outputs_change(self, event: OutputAvailabilityEvent):
-        if event.output_type not in self.available_outputs and not event.output_available:
+        if not isinstance(event.output_type, SystemOutputType) or not isinstance(event.output_available, bool):
             return
 
         if event.output_available:
             self.available_outputs.add(event.output_type)
         else:
-            self.available_outputs.remove(event.output_type)
+            self.available_outputs.discard(event.output_type)
 
         self.conversation_session.update_system_prompt(self.get_system_prompt())
 
