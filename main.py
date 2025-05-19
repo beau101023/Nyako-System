@@ -8,8 +8,8 @@ from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent, OutputRoutingEvent, UserInputEvent
 from event_system.events.System import StartupEvent, StartupStage
 from pipesys.core import AdminPanel, DiscordClientRunner
-from pipesys.inputs import DiscordVoiceInput
-from pipesys.outputs import DiscordVoiceOutput, FileLogger, PipelineMonitor
+from pipesys.inputs import DiscordVoiceInput, SpeechToTextInput
+from pipesys.outputs import DiscordVoiceOutput, FileLogger, PipelineMonitor, TextToSpeechOutput
 from pipesys.processors import ConversationSessionProcessor, RealtimeMessageChunker
 from TaskManager import TaskManager
 from TTS import MeloTTS
@@ -22,21 +22,19 @@ async def main():
     # region Core Modules
 
     ## Handles the discord client
-    await DiscordClientRunner.create()
-
-    await AdminPanel.create(listen_to=OutputRoutingEvent)
+    # await DiscordClientRunner.create()
 
     # endregion
 
     # region Input Modules
 
     ## Multi-user voice input via discord
-    await DiscordVoiceInput.create(Transcribers.FasterWhisperTranscriber(), speech_timeout=0.3)
+    # await DiscordVoiceInput.create(Transcribers.FasterWhisperTranscriber(), speech_timeout=0.3)
 
     await PipelineMonitor.create(listen_to=UserInputEvent)
     await PipelineMonitor.create(listen_to=MessageEvent)
 
-    # speech_to_text = await pipesys.inputs.SpeechToTextInput.create(Transcribers.WhisperTranscriber())
+    await SpeechToTextInput.create(Transcribers.FasterWhisperTranscriber())
     # console_input = await ConsoleInput.create(event_bus)
     # discord_input = await DiscordInput.create()
 
@@ -45,13 +43,13 @@ async def main():
     # region Processing Modules
 
     ## The chunker accumulates messages over a time period and sends them to the next processor as a batch
-    message_chunker = await RealtimeMessageChunker.create(
-        listen_to=UserInputEvent, processor_delay=0.2
-    )
+    #message_chunker = await RealtimeMessageChunker.create(
+    #    listen_to=UserInputEvent, processor_delay=0.2
+    #)
 
     ## The conversation session processor queries the LLM
     conversation_session_processor = await ConversationSessionProcessor.create(
-        listen_to=message_chunker
+        listen_to=UserInputEvent
     )
 
     ## The message router sends the results to the output modules based on a tagging system
@@ -63,12 +61,13 @@ async def main():
     # region Output Modules
 
     # console_output = await pipesys.outputs.ConsoleOutput.create(listen_to=conversation_session_processor)
-    # speech_output = await TextToSpeechOutput.create(listen_to=conversation_session_processor)
-    await DiscordVoiceOutput.create(
-        listen_to=conversation_session_processor, text_to_speech=MeloTTS()
-    )
+    await TextToSpeechOutput.create(listen_to=conversation_session_processor)
+    #await DiscordVoiceOutput.create(
+    #    listen_to=conversation_session_processor, text_to_speech=MeloTTS()
+    #)
 
-    await FileLogger.create(listen_to=conversation_session_processor)
+    #await FileLogger.create(listen_to=conversation_session_processor)
+    await AdminPanel.create(listen_to=conversation_session_processor)
 
     # visual_output = await pipesys.outputs.VisualOutput.create(listen_to=conversation_session_processor, parent=admin_events)
 
