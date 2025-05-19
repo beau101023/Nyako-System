@@ -23,7 +23,7 @@ MessageableChannel = Union[PartialMessageableChannel, GroupChannel]
 
 @dataclass
 class VoiceChannelConnectedEvent(Event):
-    voice_client: VoiceClient | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    voice_client: VoiceClient | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -33,9 +33,9 @@ class VoiceChannelDisconnectedEvent(Event):
 
 @dataclass
 class TextChannelConnectedEvent(Event):
-    channel: MessageableChannel | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    channel: MessageableChannel | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
 class BotReadyEvent(Event):
-    client: Client | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    client: Client | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED

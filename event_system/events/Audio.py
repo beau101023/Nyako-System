@@ -16,13 +16,13 @@ class AudioDirection(Enum):
 
 @dataclass
 class VolumeUpdatedEvent(Event):
-    volume: float | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    audio_type: AudioType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    audio_direction: AudioDirection | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    volume: float | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    audio_type: AudioType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    audio_direction: AudioDirection | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
 class SpeakingStateUpdate(Event):
-    is_speaking: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    audio_type: AudioType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    audio_direction: AudioDirection | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    is_speaking: bool | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    audio_type: AudioType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    audio_direction: AudioDirection | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED

@@ -25,7 +25,7 @@ class InvalidTagEvent(Event):
     tag (string): the malformed tag text, or none if no tag was provided
     """
 
-    tag: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    tag: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -38,8 +38,8 @@ class InactiveOutputEvent(Event):
     output_target (SystemOutputType): the target output that was unavailable
     """
 
-    message: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    tag: SystemOutputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    message: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    tag: SystemOutputType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -52,4 +52,4 @@ class InactiveCommandEvent(Event):
     command (CommandType): the command that was unavailable
     """
 
-    command: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    command: CommandType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED

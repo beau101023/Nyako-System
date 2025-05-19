@@ -14,8 +14,8 @@ class MessageEvent(Event):
     An event that pipes raise when they have a message to pass along.
     """
 
-    message: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    sender: Union['Pipe', type["Pipe"], EventParameterFlag | None] = EventParameterFlag.NOT_SPECIFIED
+    message: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    sender: Union['Pipe', type["Pipe"], EventParameterFlag] = EventParameterFlag.NOT_SPECIFIED
 
     def __str__(self) -> str:
         if self.message is None:
@@ -80,9 +80,9 @@ class UserInputEvent(MessageEvent):
     A class representing an event to be raised when the system receives input from a user.
     """
 
-    message: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    user_input_type: SystemInputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    user_name: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    message: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    user_input_type: SystemInputType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    user_name: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
     priority: int = 0
 
     def __str__(self) -> str:
@@ -107,7 +107,7 @@ class OutputRoutingEvent(MessageEvent):
     A dataclass representing an event to be raised to deliver output to a specific destination.
     """
 
-    destination: SystemOutputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    destination: SystemOutputType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -123,8 +123,8 @@ class OutputAvailabilityEvent(Event):
     A dataclass representing an event to be raised when the system's outputs or commands change availability.
     """
 
-    output_type: SystemOutputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    output_available: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    output_type: SystemOutputType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    output_available: bool | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -133,5 +133,5 @@ class InputActivityEvent(Event):
     A dataclass representing an event to be raised when the system's inputs change availability.
     """
 
-    input_type: SystemInputType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    input_active: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    input_type: SystemInputType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    input_active: bool | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED

@@ -48,7 +48,7 @@ class CommandEvent(Event):
     A dataclass representing a system-wide command to be executed.
     """
 
-    command: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    command: CommandType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 class StartupStage(Enum):
@@ -67,7 +67,7 @@ class StartupEvent(Event):
     A dataclass representing an event to be raised when the system is starting up.
     """
 
-    stage: StartupStage | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    stage: StartupStage | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -80,8 +80,8 @@ class TaskCreatedEvent(Event):
     pretty_sender (str): a pretty string representation of the sender of the task
     """
 
-    task: Task | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    pretty_sender: str | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    task: Task | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    pretty_sender: str | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
 
 
 @dataclass
@@ -90,5 +90,5 @@ class CommandAvailabilityEvent(Event):
     A dataclass representing an event to be raised when the system's commands change availability.
     """
 
-    command_type: CommandType | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
-    command_available: bool | EventParameterFlag | None = EventParameterFlag.NOT_SPECIFIED
+    command_type: CommandType | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
+    command_available: bool | EventParameterFlag = EventParameterFlag.NOT_SPECIFIED
