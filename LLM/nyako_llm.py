@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 
 import settings
-from settings import ASYNCOPENAI as client
+from settings import ASYNCOPENAI as CLIENT
 from vectordb.RAG_utils import insertToMemory, retrieveMemoriesWithContext
 
 
@@ -10,7 +10,7 @@ async def get_response(messages: list, model=settings.chat_model):
     if messages is None:
         raise ValueError("messages cannot be None")
 
-    response = await client.chat.completions.create(model=model, messages=messages)
+    response = await CLIENT.chat.completions.create(model=model, messages=messages)
 
     return response.choices[0].message.content
 
@@ -19,7 +19,7 @@ async def get_response_stream(messages: list, model=settings.chat_model):
     if messages is None:
         raise ValueError("messages cannot be None")
 
-    async for response in await client.chat.completions.create(
+    async for response in await CLIENT.chat.completions.create(
         model=model, messages=messages, stream=True
     ):
         yield response.choices[0].delta.content
@@ -70,9 +70,9 @@ class ConversationSession:
         Memorizes and clears all messages in the conversation.
     """
 
-    def __init__(self, systemP=settings.chat_model_prompt, summarizeP=settings.summarize_prompt):
-        self.systemP = format_message_as_dict("system", systemP)
-        self.summarizeP = format_message_as_dict("system", summarizeP)
+    def __init__(self, system_p=settings.chat_model_prompt, summarize_p=settings.summarize_prompt):
+        self.systemP = format_message_as_dict("system", system_p)
+        self.summarizeP = format_message_as_dict("system", summarize_p)
         self.current_context_messages: list[dict[str, str]] = []
         self.memory = {}
 
@@ -94,7 +94,7 @@ class ConversationSession:
         self._add_message_to_history(message)
         buffer = []
         buffer_length = 0
-        async for response_chunk in get_response_stream(await self.getContext()):
+        async for response_chunk in get_response_stream(await self.get_context()):
             if response_chunk:
                 buffer.append(response_chunk)
                 buffer_length += len(response_chunk)
@@ -111,22 +111,22 @@ class ConversationSession:
 
     async def query(self, message: str) -> str:
         self._add_message_to_history(message)
-        response = await get_response(await self.getContext())
+        response = await get_response(await self.get_context())
 
         if not response:
             return ""
 
         return response
 
-    def updateSystemPrompt(self, newPrompt: str):
-        self.systemP = format_message_as_dict("system", newPrompt)
+    def update_system_prompt(self, new_prompt: str):
+        self.systemP = format_message_as_dict("system", new_prompt)
 
-    def mostRecentMessage(self) -> dict:
+    def most_recent_message(self) -> dict:
         return self.current_context_messages[-1]
 
-    async def getContext(self) -> list:
+    async def get_context(self) -> list:
         context = [self.systemP]
-        ltm = await self.getLongTermMemory()
+        ltm = await self.get_long_term_memory()
         if ltm:
             context.append(ltm)
         if self.memory:
@@ -134,15 +134,15 @@ class ConversationSession:
         context += self.current_context_messages
         return context
 
-    async def getLongTermMemory(self):
-        memoryChunks = await retrieveMemoriesWithContext(
-            self.mostRecentMessage()["content"],
+    async def get_long_term_memory(self):
+        memory_chunks = await retrieveMemoriesWithContext(
+            self.most_recent_message()["content"],
             settings.ltm_retrieval_count,
             settings.ltm_context_size,
         )
-        if len(memoryChunks) == 0:
+        if len(memory_chunks) == 0:
             return None
-        return self._format_memory_chunks(memoryChunks)
+        return self._format_memory_chunks(memory_chunks)
 
     async def memorize(self, messages):
         if messages is None or len(messages) == 0:
@@ -166,36 +166,36 @@ class ConversationSession:
         )
         self.memory = format_message_as_dict("user", "[short-term memory] " + memory_response)
 
-    async def memorizeOldest(self, num_messages):
+    async def memorize_oldest(self, num_messages):
         oldest_messages = self.current_context_messages[:num_messages]
         await self.memorize(oldest_messages)
         self.current_context_messages = self.current_context_messages[num_messages:]
 
-    async def memorizeAll(self):
+    async def memorize_all(self):
         await self.memorize(self.current_context_messages)
         self.current_context_messages = []
 
     def _add_message_to_history(self, message):
-        timeString = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
-        self.current_context_messages.append(format_message_as_dict("user", timeString + message))
+        time_string = datetime.now().strftime("%m/%d/%Y, %H:%M:%S ")
+        self.current_context_messages.append(format_message_as_dict("user", time_string + message))
 
-    async def addLLMMessageToContext(self, assistant_message: str) -> None:
+    async def add_llm_message_to_context(self, assistant_message: str) -> None:
         self.current_context_messages.append(format_message_as_dict("assistant", assistant_message))
         if (
             len(self.current_context_messages) > settings.max_context_len
             and settings.memorize_enabled
         ):
-            await self.memorizeOldest(settings.num_messages_to_summarize)
+            await self.memorize_oldest(settings.num_messages_to_summarize)
         else:
             self.current_context_messages = self.current_context_messages[
                 -settings.max_context_len :
             ]
 
-    def _format_memory_chunks(self, memoryChunks):
-        aggregateText = "[long-term memory]\n"
+    def _format_memory_chunks(self, memory_chunks):
+        aggregate_text = "[long-term memory]\n"
         count = 0
-        for chunk in memoryChunks:
+        for chunk in memory_chunks:
             astext = "\n".join([message.origin_messages for message in chunk])
-            aggregateText += "MEMORY " + str(count) + ": " + astext + "\n"
+            aggregate_text += "MEMORY " + str(count) + ": " + astext + "\n"
             count += 1
-        return format_message_as_dict("user", aggregateText)
+        return format_message_as_dict("user", aggregate_text)

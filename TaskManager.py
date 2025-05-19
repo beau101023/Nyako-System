@@ -7,9 +7,9 @@ from event_system.events.System import TaskCreatedEvent
 class TaskManager:
     def __init__(self):
         self.tasks = []
-        EventBusSingleton.subscribe(TaskCreatedEvent, self.onTaskCreated)
+        EventBusSingleton.subscribe(TaskCreatedEvent, self.on_task_created)
 
-    def onTaskCreated(self, event: TaskCreatedEvent):
+    def on_task_created(self, event: TaskCreatedEvent):
         print("Task registered for " + str(event.pretty_sender))
         self.tasks.append(event.task)
 

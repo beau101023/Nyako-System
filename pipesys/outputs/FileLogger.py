@@ -31,20 +31,20 @@ class FileLogger(Pipe):
         self.logfile_path = "logs/log" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".txt"
         os.makedirs(os.path.dirname(self.logfile_path), exist_ok=True)
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     @classmethod
     async def create(cls, listen_to: MessageEvent | Pipe | type[MessageEvent]):
         self = FileLogger(listen_to)
 
-        EventBusSingleton.subscribe(UserInputEvent, self.onMessage)
+        EventBusSingleton.subscribe(UserInputEvent, self.on_message)
 
         async with aiofiles.open(self.logfile_path, mode="w", encoding="utf-8") as logfile:
             await logfile.write(f"system: {chat_model_prompt}")
 
         return self
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         """
         Logs received messages to a file.
 

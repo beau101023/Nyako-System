@@ -54,7 +54,7 @@ class AdminPanel(Pipe):
 
         self.create_text_display()
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     @classmethod
     async def create(cls, listen_to: MessageSource) -> "AdminPanel":
@@ -63,7 +63,7 @@ class AdminPanel(Pipe):
         task = asyncio.create_task(self.run_admin_panel())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Admin Panel"))
 
-        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.on_stop)
         EventBusSingleton.subscribe(BotReadyEvent, self.update_discord_control_panel)
         EventBusSingleton.subscribe(StartupEvent(StartupStage.WARMUP), self.publish_volume_defaults)
 
@@ -115,9 +115,9 @@ class AdminPanel(Pipe):
             self.right_layout.addWidget(button)
 
     def connect_to_channel(self, channel: TextChannel | VoiceChannel):
-        asyncio.create_task(self._connectAndPublish(channel))
+        asyncio.create_task(self._connect_and_publish(channel))
 
-    async def _connectAndPublish(self, channel: TextChannel | VoiceChannel):
+    async def _connect_and_publish(self, channel: TextChannel | VoiceChannel):
         if isinstance(channel, VoiceChannel):
             # connect to channel
             client = await channel.connect()
@@ -138,7 +138,7 @@ class AdminPanel(Pipe):
 
         self.text_display_window.setCentralWidget(self.text_display)
 
-    def update_text_display(self, text: str | None):
+    def update_text_display(self, text: str):
         self.text_display.setText(text)
 
         # Resize the label to fit the text
@@ -228,14 +228,14 @@ class AdminPanel(Pipe):
         # Handle command trigger here
         asyncio.create_task(EventBusSingleton.publish(CommandEvent(command_type)))
 
-    def onMessage(self, event: MessageEvent):
+    def on_message(self, event: MessageEvent):
         self.update_text_display(event.message)
 
     async def run_admin_panel(self):
         self.window.show()
         self.text_display_window.show()
 
-    async def onStop(self, event: CommandEvent):
+    async def on_stop(self, event: CommandEvent):
         self.window.close()
         self.text_display_window.close()
 

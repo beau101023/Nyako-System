@@ -22,7 +22,7 @@ from pipesys import Pipe
 from pipesys.inputs.discord_voice_input.StreamSink import StreamSink
 from settings import debug_mode, speech_sensitivity_threshold
 from Transcribers import Transcriber, WhisperTranscriber
-from VAD_utils import detectVoiceActivity
+from VAD_utils import detect_voice_activity
 
 
 class DiscordVoiceInput(Pipe):
@@ -71,7 +71,7 @@ class DiscordVoiceInput(Pipe):
         # Subscribe to relevant events
         EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), instance.stop)
         EventBusSingleton.subscribe(
-            VolumeUpdatedEvent(None, AudioType.DISCORD, AudioDirection.INPUT),
+            VolumeUpdatedEvent(audio_type=AudioType.DISCORD, audio_direction=AudioDirection.INPUT),
             instance.on_input_volume_update,
         )
 
@@ -111,7 +111,7 @@ class DiscordVoiceInput(Pipe):
         3. Buffers audio for transcription when speaking is detected.
         """
         # Detect speech
-        is_speaking_probability = detectVoiceActivity(audio_segment)
+        is_speaking_probability = detect_voice_activity(audio_segment)
 
         # If the user transitions to speaking
         if (

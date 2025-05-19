@@ -16,7 +16,7 @@ class DiscordOutput(Pipe):
         super().__init__()
         self.sendChannel: discord.abc.MessageableChannel | None = None
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     @classmethod
     async def create(cls, listen_to: Pipe | MessageEvent | type[MessageEvent]):
@@ -30,7 +30,7 @@ class DiscordOutput(Pipe):
     def set_channel(self, event: TextChannelConnectedEvent):
         self.sendChannel = event.channel
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         # discord will throw an error if the message is empty
         if event.message is None or not event.message.strip():
             return

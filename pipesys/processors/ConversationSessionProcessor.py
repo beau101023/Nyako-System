@@ -27,30 +27,30 @@ class ConversationSessionProcessor(Pipe):
         super().__init__()
         self.buffer_size = buffer_size
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
-        self.subscribe_to_message_sources(track_outputs_from, self.onOutputDelivered)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
+        self.subscribe_to_message_sources(track_outputs_from, self.on_output_delivered)
 
     @classmethod
     async def create(
         cls,
         listen_to: MessageSource | list[MessageSource],
-        track_LLM_outputs_from: MessageSource = OutputDeliveryEvent,
+        track_llm_outputs_from: MessageSource = OutputDeliveryEvent,
         buffer_size=10,
     ):
-        self = ConversationSessionProcessor(listen_to, track_LLM_outputs_from, buffer_size)
+        self = ConversationSessionProcessor(listen_to, track_llm_outputs_from, buffer_size)
 
-        EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputsChange)
-        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
+        EventBusSingleton.subscribe(OutputAvailabilityEvent, self.on_outputs_change)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.on_stop)
 
         # valid output tags
         self.available_outputs = set()
 
         self.conversation_session = ConversationSession()
-        self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
+        self.conversation_session.update_system_prompt(self.get_system_prompt())
 
         return self
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         try:
             async for response_chunk in self.conversation_session.stream_query(
                 str(event), self.buffer_size
@@ -58,13 +58,13 @@ class ConversationSessionProcessor(Pipe):
                 await EventBusSingleton.publish(MessageEvent(response_chunk, self))
         except openai.APIError as e:
             print(e.message)
-        self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
+        self.conversation_session.update_system_prompt(self.get_system_prompt())
 
-    async def onOutputDelivered(self, event: MessageEvent):
+    async def on_output_delivered(self, event: MessageEvent):
         if event.message:
-            await self.conversation_session.addLLMMessageToContext(event.message)
+            await self.conversation_session.add_llm_message_to_context(event.message)
 
-    async def onOutputsChange(self, event: OutputAvailabilityEvent):
+    async def on_outputs_change(self, event: OutputAvailabilityEvent):
         if event.output_type not in self.available_outputs and not event.output_available:
             return
 
@@ -73,10 +73,10 @@ class ConversationSessionProcessor(Pipe):
         else:
             self.available_outputs.remove(event.output_type)
 
-        self.conversation_session.updateSystemPrompt(self.getSystemPrompt())
+        self.conversation_session.update_system_prompt(self.get_system_prompt())
 
-    def getSystemPrompt(self):
-        valid_tags = [output.toString() for output in self.available_outputs]
+    def get_system_prompt(self):
+        valid_tags = [output.to_string() for output in self.available_outputs]
 
         if len(self.available_outputs) > 0:
             return (
@@ -85,6 +85,6 @@ class ConversationSessionProcessor(Pipe):
         else:
             return settings.chat_model_prompt
 
-    async def onStop(self, event: CommandEvent):
+    async def on_stop(self, event: CommandEvent):
         if settings.memorize_enabled:
-            await self.conversation_session.memorizeAll()
+            await self.conversation_session.memorize_all()
