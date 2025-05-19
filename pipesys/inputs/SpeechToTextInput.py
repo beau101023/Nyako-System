@@ -19,7 +19,7 @@ from event_system.events.System import CommandEvent, CommandType, TaskCreatedEve
 from pipesys import Pipe
 from settings import INPUT_SAMPLING_RATE, FramesPerBuffer, debug_mode, speech_sensitivity_threshold
 from Transcribers import Transcriber, WhisperTranscriber
-from VAD_utils import detectVoiceActivity
+from VAD_utils import detect_voice_activity
 
 
 class SpeechToTextInput(Pipe):
@@ -103,7 +103,7 @@ class SpeechToTextInput(Pipe):
     def microphone_input_callback(self, in_data, frame_count, time_info, status):
         self.pre_speech_buffer.append(in_data)
 
-        is_speaking_probability = detectVoiceActivity(in_data)
+        is_speaking_probability = detect_voice_activity(in_data)
 
         if (
             is_speaking_probability > speech_sensitivity_threshold

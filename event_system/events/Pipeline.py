@@ -48,10 +48,10 @@ class SystemOutputType(Enum):
     TWITCH = 5
 
     @staticmethod
-    def fromString(str: str) -> list["SystemOutputType"] | None:
+    def from_string(str: str) -> list["SystemOutputType"] | None:
         return system_output_parse_dict.get(str, None)
 
-    def toString(self) -> str:
+    def to_string(self) -> str:
         for key, value in system_output_parse_dict.items():
             if self in value:
                 return key

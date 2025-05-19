@@ -23,7 +23,7 @@ class RealtimeMessageChunker(Pipe):
         self.event_queue: list[UserInputEvent] = []
         self.last_no_input_sent_time: datetime = datetime.now()
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     # processor_delay is the amount of time to wait after the last message before processing the messages
     # no_input_interval_seconds is the amount of time to wait before sending a message indicating that there has been no input
@@ -39,12 +39,12 @@ class RealtimeMessageChunker(Pipe):
         task = asyncio.create_task(self.chunk_messages())
         await EventBusSingleton.publish(TaskCreatedEvent(task, pretty_sender="Message Chunker"))
 
-        EventBusSingleton.subscribe(CommandEvent(CommandType.SLEEP), self.onSleep)
-        EventBusSingleton.subscribe(CommandEvent(CommandType.WAKE), self.onWake)
-        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.SLEEP), self.on_sleep)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.WAKE), self.on_wake)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.on_stop)
         EventBusSingleton.subscribe(
             SpeakingStateUpdate(audio_direction=AudioDirection.INPUT),
-            self.onUserSpeakingStateUpdate,
+            self.on_user_speaking_state_update,
         )
 
         self.no_input_interval_seconds = no_input_interval_seconds
@@ -108,7 +108,7 @@ class RealtimeMessageChunker(Pipe):
     async def send(self, message: str):
         await EventBusSingleton.publish(MessageEvent(message, self))
 
-    async def onMessage(self, event: UserInputEvent):
+    async def on_message(self, event: UserInputEvent):
         if event.priority is None:
             return
 
@@ -143,16 +143,16 @@ class RealtimeMessageChunker(Pipe):
 
         return max(event_priorities)
 
-    async def onSleep(self, event: CommandEvent):
+    async def on_sleep(self, event: CommandEvent):
         self.sleeping = True
 
-    async def onWake(self, event: CommandEvent):
+    async def on_wake(self, event: CommandEvent):
         self.sleeping = False
 
-    async def onStop(self, event: CommandEvent):
+    async def on_stop(self, event: CommandEvent):
         self.stopped = True
 
-    async def onUserSpeakingStateUpdate(self, event: SpeakingStateUpdate):
+    async def on_user_speaking_state_update(self, event: SpeakingStateUpdate):
         # if the user has finished a period of speech, update the last input time
         if event.is_speaking is None:
             return

@@ -16,10 +16,10 @@ class CommandType(Enum):
     WAKE = 4
 
     @staticmethod
-    def fromString(str: str) -> "CommandType|None":
+    def from_string(str: str) -> "CommandType|None":
         return command_event_parse_dict.get(str, None)
 
-    def toString(self) -> str:
+    def to_string(self) -> str:
         for key, value in command_event_parse_dict.items():
             if self == value:
                 return key

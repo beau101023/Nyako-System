@@ -9,7 +9,7 @@ from event_system import EventBusSingleton
 from event_system.events.Pipeline import MessageEvent
 from event_system.events.System import CommandEvent, CommandType, TaskCreatedEvent
 from pipesys import MessageSource, Pipe
-from settings import ASYNCOPENAI as client
+from settings import ASYNCOPENAI as CLIENT
 
 
 class VisualOutput(Pipe):
@@ -40,10 +40,10 @@ class VisualOutput(Pipe):
         self.text_panel.setWordWrap(True)
         layout.addWidget(self.text_panel, alignment=Qt.AlignmentFlag.AlignBottom)
 
-        self.setEmote("images/neutral.png")
-        self.setText("[listening]")
+        self.set_emote("images/neutral.png")
+        self.set_text("[listening]")
 
-        self.subscribe_to_message_sources(listen_to, self.onMessage)
+        self.subscribe_to_message_sources(listen_to, self.on_message)
 
     @classmethod
     async def create(cls, listen_to: MessageSource, parent=None):
@@ -57,32 +57,32 @@ class VisualOutput(Pipe):
         """
         self = VisualOutput(parent, listen_to)
 
-        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.onStop)
+        EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.on_stop)
 
-        task = asyncio.create_task(self.runVisualOutput())
+        task = asyncio.create_task(self.run_visual_output())
         await EventBusSingleton.publish(TaskCreatedEvent(task, "Visual Output"))
 
         return self
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         if event.message is None or self.stopped:
             return
 
-        self.setText(event.message)
+        self.set_text(event.message)
 
-        emotion = await self.ChatGPTClassify(event.message)
+        emotion = await self.chatgpt_classify(event.message)
 
         if emotion is None:
-            self.setEmote("images/neutral.png")
+            self.set_emote("images/neutral.png")
             return
-        self.setEmote("images/" + emotion + ".png")
+        self.set_emote("images/" + emotion + ".png")
 
-    async def ChatGPTClassify(self, message: str):
+    async def chatgpt_classify(self, message: str):
         # Get the list of possible emotions from the names of the files in the /nyako/images directory
         possible_emotions = [os.path.splitext(filename)[0] for filename in os.listdir("images/")]
 
         # Call the OpenAI API to classify the message
-        response = await client.chat.completions.create(
+        response = await CLIENT.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
@@ -105,16 +105,16 @@ class VisualOutput(Pipe):
 
         return emotion
 
-    def setEmote(self, path: str):
+    def set_emote(self, path: str):
         pixmap = QPixmap(path)
         pixmap = pixmap.scaled(500, 500, Qt.AspectRatioMode.KeepAspectRatio)
         self.image_panel.setPixmap(pixmap)
 
-    def setText(self, text: str):
+    def set_text(self, text: str):
         self.text_panel.setText(text)
 
-    async def runVisualOutput(self):
+    async def run_visual_output(self):
         self.window.show()
 
-    async def onStop(self, event: CommandEvent):
+    async def on_stop(self, event: CommandEvent):
         self.window.close()

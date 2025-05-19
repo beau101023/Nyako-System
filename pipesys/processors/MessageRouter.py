@@ -22,11 +22,11 @@ class MessageRouter(Pipe):
     def __init__(self, listen_to: Pipe):
         self.active_outputs: set[SystemOutputType] = set()
         self.active_commands: set[CommandType] = set()
-        EventBusSingleton.subscribe(OutputAvailabilityEvent, self.onOutputStateChanged)
-        EventBusSingleton.subscribe(CommandAvailabilityEvent, self.onCommandStateChanged)
-        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.onMessage)
+        EventBusSingleton.subscribe(OutputAvailabilityEvent, self.on_output_state_changed)
+        EventBusSingleton.subscribe(CommandAvailabilityEvent, self.on_command_state_changed)
+        EventBusSingleton.subscribe(MessageEvent(sender=listen_to), self.on_message)
 
-    async def onMessage(self, event: MessageEvent):
+    async def on_message(self, event: MessageEvent):
         """
         The MessageRouter class expects a message consisting of n parts of the format [output_type] message.\
         """
@@ -38,7 +38,7 @@ class MessageRouter(Pipe):
             return
 
         # Split the message by tag.
-        parts = self.splitByTag(message)
+        parts = self.split_by_tag(message)
 
         # Find the index of the first valid tag
         first_tag_index = self.get_first_tag_in_list(parts)
@@ -65,7 +65,7 @@ class MessageRouter(Pipe):
             tag = parts[i].strip()[1:-1].lower()
 
             # If `i` is a command, handle it
-            if CommandType.fromString(tag):
+            if CommandType.from_string(tag):
                 await self.handle_command_tag(tag)
                 i += 1
                 continue
@@ -76,12 +76,12 @@ class MessageRouter(Pipe):
                 continue
 
             # If `i` is a valid output tag but it's followed by another tag, ignore it
-            if SystemOutputType.fromString(tag) and self.is_tag(parts[i + 1]):
+            if SystemOutputType.from_string(tag) and self.is_tag(parts[i + 1]):
                 i += 1
                 continue
 
             # If `i` is a valid output tag and it's followed by a non-tag part, handle it
-            if SystemOutputType.fromString(tag):
+            if SystemOutputType.from_string(tag):
                 message = parts[i + 1]
                 await self.handle_output_tag(tag, message)
                 i += 2
@@ -91,7 +91,7 @@ class MessageRouter(Pipe):
             await EventBusSingleton.publish(InvalidTagEvent(tag))
 
     async def handle_command_tag(self, tag: str) -> None:
-        command = CommandType.fromString(tag)
+        command = CommandType.from_string(tag)
         if command is None:
             await EventBusSingleton.publish(InvalidTagEvent(tag))
         elif command in self.active_commands:
@@ -107,7 +107,7 @@ class MessageRouter(Pipe):
         tag (str): the tag to handle
         message (str): the message to handle
         """
-        output_types: list[SystemOutputType] | None = SystemOutputType.fromString(tag)
+        output_types: list[SystemOutputType] | None = SystemOutputType.from_string(tag)
         if output_types is None:
             await EventBusSingleton.publish(InvalidTagEvent(tag))
             return
@@ -144,7 +144,7 @@ class MessageRouter(Pipe):
         """
         return re.match(r"\[.*?\]", candidate) is not None
 
-    def splitByTag(self, message: str) -> list[str]:
+    def split_by_tag(self, message: str) -> list[str]:
         """
         Splits a message into a list[str] of the format [tag, message, tag, message, ...]
             when the initial message is of the form `[tag] message [tag] message`.
@@ -154,13 +154,13 @@ class MessageRouter(Pipe):
         """
         return re.split(r"(\[.*?\])", message)
 
-    async def onOutputStateChanged(self, event: OutputAvailabilityEvent):
+    async def on_output_state_changed(self, event: OutputAvailabilityEvent):
         if event.output_available:
             self.active_outputs.add(event.output_type)
         else:
             self.active_outputs.remove(event.output_type)
 
-    async def onCommandStateChanged(self, event: CommandAvailabilityEvent):
+    async def on_command_state_changed(self, event: CommandAvailabilityEvent):
         if event.command_available:
             self.active_commands.add(event.command_type)
         else:
