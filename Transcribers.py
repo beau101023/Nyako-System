@@ -132,7 +132,7 @@ class FasterWhisperTranscriber(Transcriber):
         no_speech_probability_threshold (float): the threshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
         model_size (str): the size of the FasterWhisper model to load. Default is "small.en".
         """
-        self.model = WhisperModel(model_size, device=device.type, compute_type="float16")
+        self.model = WhisperModel(model_size, device=device.type, compute_type="auto")
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
