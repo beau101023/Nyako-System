@@ -45,14 +45,19 @@ class Transcriber(ABC):
 
 
 class WhisperTranscriber(Transcriber):
-    def __init__(self, no_speech_probability_threshold: float = 0.7):
+    def __init__(
+        self,
+        no_speech_probability_threshold: float = 0.7,
+        model_size: str = "small.en"
+    ):
         """
         Create a new WhisperTranscriber
 
         Parameters:
-        no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
+        no_speech_probability_threshold (float): the threshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
+        model_size (str): the size of the Whisper model to load. Default is "small.en".
         """
-        self.transcriber = whisper.load_model("small.en", device=device, in_memory=True)
+        self.transcriber = whisper.load_model(model_size, device=device, in_memory=True)
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
 
@@ -111,14 +116,22 @@ class WhisperTranscriber(Transcriber):
 
 
 class FasterWhisperTranscriber(Transcriber):
-    def __init__(self, no_speech_probability_threshold: float = 0.7):
+    def __init__(
+        self,
+        no_speech_probability_threshold: float = 0.7,
+        model_size: str = "small.en"
+    ):
         """
         Create a new FasterWhisperTranscriber
 
+        Note: The faster-whisper models seem to be best for batched processing of long audio.
+            In this use case, for streaming audio, the performance differences are negligible
+            compared to normal Whisper.
+
         Parameters:
-        no_speech_probability_threshold (float): the theshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
+        no_speech_probability_threshold (float): the threshold of likelihood after which the transcribed text will be rejected as not speech. Default is 0.7.
+        model_size (str): the size of the FasterWhisper model to load. Default is "small.en".
         """
-        model_size = "distil-large-v3"
         self.model = WhisperModel(model_size, device=device.type, compute_type="float16")
         self.no_speech_probability_threshold = no_speech_probability_threshold
         self.result = None
