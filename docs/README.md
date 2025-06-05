@@ -42,17 +42,17 @@ EventBusSingleton.subscribe(BotReadyEvent, self.on_bot_ready)
 EventBusSingleton.subscribe(CommandEvent(CommandType.STOP), self.stop)
 ```
 
-3. When subscribing, ignore an attribute by setting its value to `EventParameterFlags.NOT_SPECIFIED`. You will then receive events regardless of the value of the ignored attribute.
+3. When subscribing, ignore an attribute by setting its value to `EventParameterFlag.NOT_SPECIFIED`. You will then receive events regardless of the value of the ignored attribute.
 
 ```python
 # Subscribe to all VolumeUpdatedEvent with an AudioType of DISCORD, an AudioDirection of INPUT, and indicate we don't care about the value of the first parameter.
 EventBusSingleton.subscribe(
-    VolumeUpdatedEvent(EventParameterFlags.NOT_SPECIFIED, AudioType.DISCORD, AudioDirection.INPUT),
+    VolumeUpdatedEvent(EventParameterFlag.NOT_SPECIFIED, AudioType.DISCORD, AudioDirection.INPUT),
     self.on_input_volume_update
 )
 ```
 
-4. Event parameters are equal to EventParameterFlags.NOT_SPECIFIED by default, so event subscriptions can simply omit parameters they have no interest in filtering on as well.
+4. Event parameters are equal to EventParameterFlag.NOT_SPECIFIED by default, so event subscriptions can simply omit parameters they have no interest in filtering on as well.
 
 ```python
 # This event subscription is equivalent to the previous one.
