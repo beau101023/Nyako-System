@@ -92,8 +92,10 @@ def audio_reformat(input_data: Tensor | np.ndarray | bytes, volume: float = 1.0)
             f"Input must be a tensor, numpy array, or bytes. Type is {type(input_data)}"
         )
 
-    # Normalize audio
-    audio_np = audio_np / np.max(audio_np)
+    # Normalize audio, but avoid divide-by-zero when the array is all zeros
+    max_val = np.max(audio_np)
+    if max_val != 0:
+        audio_np = audio_np / max_val
 
     # Apply volume
     audio_np = audio_np * volume
