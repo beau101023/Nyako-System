@@ -20,7 +20,7 @@ from TTS import SileroTTS, TextToSpeech
 
 class DiscordVoiceOutput(Pipe):
     """
-    Module that recieves text input from a pipe, converts it to speech, and plays it on the discord voice channel the bot is currently connected to.
+    Module that receives text input from a pipe, converts it to speech, and plays it on the discord voice channel the bot is currently connected to.
     """
 
     text_to_speech: TextToSpeech
